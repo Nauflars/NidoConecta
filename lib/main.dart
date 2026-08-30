@@ -307,6 +307,12 @@ class FamilyTodayView extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         PrimaryActionButton(
+          label: 'Enviar informacion de casa',
+          icon: Icons.home_work_outlined,
+          onPressed: () => openModule(context, const HomeReportFormScreen()),
+        ),
+        const SizedBox(height: 10),
+        PrimaryActionButton(
           label: 'Enviar mensaje',
           icon: Icons.chat_bubble_outline,
           onPressed: () => openModule(context, const MessagesScreen()),
@@ -317,6 +323,11 @@ class FamilyTodayView extends StatelessWidget {
             AppModule('Calendario', Icons.event_outlined, CalendarScreen()),
             AppModule('Menu', Icons.restaurant_menu_outlined, MenuScreen()),
             AppModule('Fotos', Icons.photo_library_outlined, MediaScreen()),
+            AppModule(
+              'Casa',
+              Icons.home_work_outlined,
+              HomeReportFormScreen(),
+            ),
             AppModule(
               'Autorizados',
               Icons.verified_user_outlined,
@@ -1156,6 +1167,186 @@ class _DailyReportFormScreenState extends State<DailyReportFormScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Agenda guardada')),
+    );
+    Navigator.of(context).pop();
+  }
+}
+
+class HomeReportFormScreen extends StatefulWidget {
+  const HomeReportFormScreen({super.key});
+
+  @override
+  State<HomeReportFormScreen> createState() => _HomeReportFormScreenState();
+}
+
+class _HomeReportFormScreenState extends State<HomeReportFormScreen> {
+  final _centerId = TextEditingController();
+  final _childId = TextEditingController();
+  final _reportDate = TextEditingController(
+    text: DateTime.now().toIso8601String().substring(0, 10),
+  );
+  String _sleep = 'Bien';
+  String _breakfast = 'Si';
+  String _bowelMovement = 'No';
+  final _homeNotes = TextEditingController();
+  final _medication = TextEditingController();
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _centerId.dispose();
+    _childId.dispose();
+    _reportDate.dispose();
+    _homeNotes.dispose();
+    _medication.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Informacion de casa')),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          children: [
+            const HeaderBlock(
+              title: 'Mateo',
+              subtitle: 'Antes de llegar',
+              metric: 'Informacion para la escuela',
+              icon: Icons.home_work_outlined,
+            ),
+            if (isSupabaseConfigured)
+              FormSection(
+                title: 'Registro',
+                children: [
+                  AppTextField(
+                    controller: _centerId,
+                    label: 'ID del centro',
+                    icon: Icons.apartment_outlined,
+                    validator: requiredField,
+                  ),
+                  AppTextField(
+                    controller: _childId,
+                    label: 'ID del nino',
+                    icon: Icons.child_care_outlined,
+                    validator: requiredField,
+                  ),
+                  AppTextField(
+                    controller: _reportDate,
+                    label: 'Fecha',
+                    icon: Icons.event_outlined,
+                    hint: 'AAAA-MM-DD',
+                    validator: birthDateField,
+                  ),
+                ],
+              ),
+            FormSection(
+              title: 'Esta manana',
+              children: [
+                ChoiceLine(
+                  label: 'Como ha dormido',
+                  value: _sleep,
+                  options: const ['Bien', 'Regular', 'Mal'],
+                  onChanged: (value) => setState(() => _sleep = value),
+                ),
+                ChoiceLine(
+                  label: 'Ha desayunado',
+                  value: _breakfast,
+                  options: const ['Si', 'No'],
+                  onChanged: (value) => setState(() => _breakfast = value),
+                ),
+                ChoiceLine(
+                  label: 'Deposicion en casa',
+                  value: _bowelMovement,
+                  options: const ['Si', 'No'],
+                  onChanged: (value) => setState(() => _bowelMovement = value),
+                ),
+              ],
+            ),
+            FormSection(
+              title: 'Notas para hoy',
+              children: [
+                AppTextField(
+                  controller: _homeNotes,
+                  label: 'Observaciones de casa',
+                  icon: Icons.notes_outlined,
+                  maxLines: 4,
+                ),
+                AppTextField(
+                  controller: _medication,
+                  label: 'Medicacion',
+                  icon: Icons.medication_outlined,
+                  maxLines: 3,
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 52,
+              child: FilledButton.icon(
+                onPressed: _submitting ? null : _submit,
+                icon: _submitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.send_outlined),
+                label: Text(_submitting ? 'Enviando' : 'Enviar a la escuela'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    setState(() => _submitting = true);
+
+    if (isSupabaseConfigured) {
+      final missing = requiredField(_centerId.text) ??
+          requiredField(_childId.text) ??
+          birthDateField(_reportDate.text);
+      if (missing != null) {
+        setState(() => _submitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(missing)),
+        );
+        return;
+      }
+
+      try {
+        final notes = [
+          'Sueno: $_sleep',
+          'Desayuno: $_breakfast',
+          'Deposicion en casa: $_bowelMovement',
+          if (_homeNotes.text.trim().isNotEmpty) _homeNotes.text.trim(),
+        ].join('\n');
+
+        await Supabase.instance.client.from('daily_reports').upsert({
+          'center_id': _centerId.text.trim(),
+          'child_id': _childId.text.trim(),
+          'report_date': _reportDate.text.trim(),
+          'home_notes': notes,
+          'medication': emptyToNull(_medication.text),
+          'created_by': Supabase.instance.client.auth.currentUser?.id,
+          'updated_by': Supabase.instance.client.auth.currentUser?.id,
+        }, onConflict: 'child_id,report_date');
+      } catch (error) {
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+        return;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Informacion enviada')),
     );
     Navigator.of(context).pop();
   }

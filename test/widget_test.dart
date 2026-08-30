@@ -35,4 +35,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Email padre o tutor'), findsOneWidget);
   });
+
+  testWidgets('opens home report form from family view', (tester) async {
+    await tester.pumpWidget(const NidoConectaApp());
+
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Enviar informacion de casa'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Informacion de casa'), findsOneWidget);
+    expect(find.text('Como ha dormido'), findsOneWidget);
+  });
 }
