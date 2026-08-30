@@ -32,6 +32,27 @@ Secrets necesarios en GitHub:
 - `SUPABASE_ACCESS_TOKEN`
 - `SUPABASE_PROJECT_ID`
 - `SUPABASE_DB_PASSWORD`
+- `WORKER_SECRET`
+
+Para crear el primer centro y usuario de direccion, invocar la Edge Function `bootstrap-center` con el secreto interno:
+
+```powershell
+$headers = @{
+  "Authorization" = "Bearer $env:SERVICE_ROLE_KEY"
+  "apikey" = $env:SERVICE_ROLE_KEY
+  "x-worker-secret" = $env:WORKER_SECRET
+  "Content-Type" = "application/json"
+}
+
+$body = @{
+  centerName = "NidoConecta"
+  centerSlug = "nidoconecta"
+  adminName = "Nombre Direccion"
+  adminEmail = "direccion@centro.com"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "$env:SUPABASE_URL/functions/v1/bootstrap-center" -Method Post -Headers $headers -Body $body
+```
 
 ## Android Release
 
