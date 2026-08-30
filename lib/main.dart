@@ -320,11 +320,416 @@ class AdminDashboardView extends StatelessWidget {
           },
         ),
         const SizedBox(height: 16),
-        const PrimaryActionButton(
-          label: 'Publicar comunicado',
-          icon: Icons.campaign_outlined,
+        PrimaryActionButton(
+          label: 'Nueva alta',
+          icon: Icons.person_add_alt_1_outlined,
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const EnrollmentFormScreen(),
+              ),
+            );
+          },
         ),
       ],
+    );
+  }
+}
+
+class EnrollmentFormScreen extends StatefulWidget {
+  const EnrollmentFormScreen({super.key});
+
+  @override
+  State<EnrollmentFormScreen> createState() => _EnrollmentFormScreenState();
+}
+
+class _EnrollmentFormScreenState extends State<EnrollmentFormScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _centerId = TextEditingController();
+  final _classroomId = TextEditingController();
+  final _childName = TextEditingController();
+  final _birthDate = TextEditingController();
+  final _allergies = TextEditingController();
+  final _medicalNotes = TextEditingController();
+  final _notes = TextEditingController();
+  final _emergencyName = TextEditingController();
+  final _emergencyPhone = TextEditingController();
+  final _fatherName = TextEditingController();
+  final _fatherEmail = TextEditingController();
+  final _fatherPhone = TextEditingController();
+  final _motherName = TextEditingController();
+  final _motherEmail = TextEditingController();
+  final _motherPhone = TextEditingController();
+  final _educatorName = TextEditingController();
+  final _educatorEmail = TextEditingController();
+  String _sex = 'not_specified';
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    for (final controller in [
+      _centerId,
+      _classroomId,
+      _childName,
+      _birthDate,
+      _allergies,
+      _medicalNotes,
+      _notes,
+      _emergencyName,
+      _emergencyPhone,
+      _fatherName,
+      _fatherEmail,
+      _fatherPhone,
+      _motherName,
+      _motherEmail,
+      _motherPhone,
+      _educatorName,
+      _educatorEmail,
+    ]) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Nueva alta')),
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            children: [
+              const HeaderBlock(
+                title: 'Expediente y accesos',
+                subtitle: 'Direccion',
+                metric: 'Crea el perfil del nino e invita a la familia',
+                icon: Icons.assignment_ind_outlined,
+              ),
+              const SizedBox(height: 16),
+              FormSection(
+                title: 'Centro',
+                children: [
+                  AppTextField(
+                    controller: _centerId,
+                    label: 'ID del centro',
+                    icon: Icons.apartment_outlined,
+                    validator: requiredField,
+                  ),
+                  AppTextField(
+                    controller: _classroomId,
+                    label: 'ID del aula',
+                    icon: Icons.meeting_room_outlined,
+                  ),
+                ],
+              ),
+              FormSection(
+                title: 'Nino',
+                children: [
+                  AppTextField(
+                    controller: _childName,
+                    label: 'Nombre completo',
+                    icon: Icons.child_care_outlined,
+                    validator: requiredField,
+                  ),
+                  AppTextField(
+                    controller: _birthDate,
+                    label: 'Fecha de nacimiento',
+                    icon: Icons.event_outlined,
+                    hint: 'AAAA-MM-DD',
+                    validator: birthDateField,
+                  ),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: 'girl', label: Text('Chica')),
+                      ButtonSegment(value: 'boy', label: Text('Chico')),
+                      ButtonSegment(
+                        value: 'not_specified',
+                        label: Text('Sin definir'),
+                      ),
+                    ],
+                    selected: {_sex},
+                    onSelectionChanged: (value) {
+                      setState(() => _sex = value.single);
+                    },
+                    showSelectedIcon: false,
+                  ),
+                  AppTextField(
+                    controller: _allergies,
+                    label: 'Alergias o intolerancias',
+                    icon: Icons.health_and_safety_outlined,
+                  ),
+                  AppTextField(
+                    controller: _medicalNotes,
+                    label: 'Salud y medicacion',
+                    icon: Icons.medical_information_outlined,
+                    maxLines: 3,
+                  ),
+                  AppTextField(
+                    controller: _notes,
+                    label: 'Observaciones',
+                    icon: Icons.notes_outlined,
+                    maxLines: 3,
+                  ),
+                ],
+              ),
+              FormSection(
+                title: 'Emergencia',
+                children: [
+                  AppTextField(
+                    controller: _emergencyName,
+                    label: 'Contacto de emergencia',
+                    icon: Icons.contact_emergency_outlined,
+                  ),
+                  AppTextField(
+                    controller: _emergencyPhone,
+                    label: 'Telefono de emergencia',
+                    icon: Icons.phone_outlined,
+                    keyboardType: TextInputType.phone,
+                  ),
+                ],
+              ),
+              FormSection(
+                title: 'Familia',
+                children: [
+                  AppTextField(
+                    controller: _fatherName,
+                    label: 'Nombre padre o tutor',
+                    icon: Icons.person_outline,
+                    validator: requiredField,
+                  ),
+                  AppTextField(
+                    controller: _fatherEmail,
+                    label: 'Email padre o tutor',
+                    icon: Icons.mail_outline,
+                    keyboardType: TextInputType.emailAddress,
+                    validator: emailField,
+                  ),
+                  AppTextField(
+                    controller: _fatherPhone,
+                    label: 'Telefono padre o tutor',
+                    icon: Icons.phone_outlined,
+                    keyboardType: TextInputType.phone,
+                  ),
+                  AppTextField(
+                    controller: _motherName,
+                    label: 'Nombre madre o tutora',
+                    icon: Icons.person_outline,
+                  ),
+                  AppTextField(
+                    controller: _motherEmail,
+                    label: 'Email madre o tutora',
+                    icon: Icons.mail_outline,
+                    keyboardType: TextInputType.emailAddress,
+                    validator: optionalEmailField,
+                  ),
+                  AppTextField(
+                    controller: _motherPhone,
+                    label: 'Telefono madre o tutora',
+                    icon: Icons.phone_outlined,
+                    keyboardType: TextInputType.phone,
+                  ),
+                ],
+              ),
+              FormSection(
+                title: 'Educadora',
+                children: [
+                  AppTextField(
+                    controller: _educatorName,
+                    label: 'Nombre educadora',
+                    icon: Icons.badge_outlined,
+                  ),
+                  AppTextField(
+                    controller: _educatorEmail,
+                    label: 'Email educadora',
+                    icon: Icons.mail_outline,
+                    keyboardType: TextInputType.emailAddress,
+                    validator: optionalEmailField,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 52,
+                child: FilledButton.icon(
+                  onPressed: _submitting ? null : _submit,
+                  icon: _submitting
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.send_outlined),
+                  label: Text(_submitting ? 'Creando alta' : 'Crear e invitar'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _submitting = true);
+
+    final guardians = [
+      {
+        'fullName': _fatherName.text.trim(),
+        'email': _fatherEmail.text.trim(),
+        'relationship': 'Padre/tutor',
+        'phone': _fatherPhone.text.trim(),
+        'canPickUp': true,
+      },
+      if (_motherEmail.text.trim().isNotEmpty)
+        {
+          'fullName': _motherName.text.trim().isEmpty
+              ? 'Madre/tutora'
+              : _motherName.text.trim(),
+          'email': _motherEmail.text.trim(),
+          'relationship': 'Madre/tutora',
+          'phone': _motherPhone.text.trim(),
+          'canPickUp': true,
+        },
+    ];
+
+    final educators = [
+      if (_educatorEmail.text.trim().isNotEmpty)
+        {
+          'fullName': _educatorName.text.trim().isEmpty
+              ? 'Educadora'
+              : _educatorName.text.trim(),
+          'email': _educatorEmail.text.trim(),
+        },
+    ];
+
+    final payload = {
+      'centerId': _centerId.text.trim(),
+      'classroomId':
+          _classroomId.text.trim().isEmpty ? null : _classroomId.text.trim(),
+      'child': {
+        'fullName': _childName.text.trim(),
+        'birthDate': _birthDate.text.trim(),
+        'sex': _sex,
+        'allergies': _allergies.text.trim(),
+        'medicalNotes': _medicalNotes.text.trim(),
+        'notes': _notes.text.trim(),
+        'emergencyContactName': _emergencyName.text.trim(),
+        'emergencyContactPhone': _emergencyPhone.text.trim(),
+      },
+      'guardians': guardians,
+      'educators': educators,
+    };
+
+    try {
+      if (isSupabaseConfigured) {
+        await Supabase.instance.client.functions.invoke(
+          'create-enrollment',
+          body: payload,
+        );
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isSupabaseConfigured
+                ? 'Alta enviada. La familia recibira acceso por email.'
+                : 'Alta preparada en modo demo.',
+          ),
+        ),
+      );
+      Navigator.of(context).pop();
+    } on FunctionException catch (error) {
+      _showError(error.details?.toString() ?? error.reasonPhrase ?? 'Error');
+    } catch (error) {
+      _showError(error.toString());
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+}
+
+class FormSection extends StatelessWidget {
+  const FormSection({super.key, required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colors.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 12),
+          ...children.expand(
+            (child) => [child, const SizedBox(height: 10)],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class AppTextField extends StatelessWidget {
+  const AppTextField({
+    super.key,
+    required this.controller,
+    required this.label,
+    required this.icon,
+    this.hint,
+    this.validator,
+    this.keyboardType,
+    this.maxLines = 1,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final String? hint;
+  final String? Function(String?)? validator;
+  final TextInputType? keyboardType;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      validator: validator,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: Icon(icon),
+        border: const OutlineInputBorder(),
+      ),
     );
   }
 }
@@ -486,10 +891,12 @@ class PrimaryActionButton extends StatelessWidget {
     super.key,
     required this.label,
     required this.icon,
+    this.onPressed,
   });
 
   final String label;
   final IconData icon;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -497,7 +904,7 @@ class PrimaryActionButton extends StatelessWidget {
       width: double.infinity,
       height: 52,
       child: FilledButton.icon(
-        onPressed: () {},
+        onPressed: onPressed ?? () {},
         icon: Icon(icon),
         label: Text(label),
       ),
@@ -540,4 +947,33 @@ class ChildRow {
   final String sleep;
   final String diaper;
   final String note;
+}
+
+String? requiredField(String? value) {
+  if (value == null || value.trim().isEmpty) {
+    return 'Campo obligatorio';
+  }
+  return null;
+}
+
+String? emailField(String? value) {
+  final required = requiredField(value);
+  if (required != null) return required;
+  return optionalEmailField(value);
+}
+
+String? optionalEmailField(String? value) {
+  final trimmed = value?.trim() ?? '';
+  if (trimmed.isEmpty) return null;
+  final valid = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(trimmed);
+  return valid ? null : 'Email no valido';
+}
+
+String? birthDateField(String? value) {
+  final required = requiredField(value);
+  if (required != null) return required;
+  final parsed = DateTime.tryParse(value!.trim());
+  if (parsed == null) return 'Usa formato AAAA-MM-DD';
+  if (parsed.isAfter(DateTime.now())) return 'Fecha futura no valida';
+  return null;
 }
