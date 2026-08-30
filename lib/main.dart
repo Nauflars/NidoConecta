@@ -278,37 +278,51 @@ class FamilyTodayView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
-      key: ValueKey('family'),
+    return Column(
+      key: const ValueKey('family'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        HeaderBlock(
+        const HeaderBlock(
           title: 'Mateo',
           subtitle: 'Agenda diaria',
           metric: 'Martes 15 de septiembre · entrada 08:37',
           icon: Icons.child_care,
         ),
-        SizedBox(height: 12),
-        DailyNotebookCard(),
-        SizedBox(height: 12),
-        NoteCard(
+        const SizedBox(height: 12),
+        const DailyNotebookCard(),
+        const SizedBox(height: 12),
+        const NoteCard(
           title: 'Observaciones de la escuela',
           text: 'Traer suero fisiologico y cochecito.',
         ),
-        SizedBox(height: 12),
-        NoteCard(
+        const SizedBox(height: 12),
+        const NoteCard(
           title: 'Observaciones de casa',
           text: 'Ha dormido regular. Esta manana no ha querido leche.',
         ),
-        SizedBox(height: 12),
-        NoteCard(
+        const SizedBox(height: 12),
+        const NoteCard(
           title: 'Medicacion',
           text: 'Sin medicacion pautada hoy.',
         ),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         PrimaryActionButton(
           label: 'Enviar mensaje',
           icon: Icons.chat_bubble_outline,
+          onPressed: () => openModule(context, const MessagesScreen()),
+        ),
+        const SizedBox(height: 16),
+        const ModuleGrid(
+          modules: [
+            AppModule('Calendario', Icons.event_outlined, CalendarScreen()),
+            AppModule('Menu', Icons.restaurant_menu_outlined, MenuScreen()),
+            AppModule('Fotos', Icons.photo_library_outlined, MediaScreen()),
+            AppModule(
+              'Autorizados',
+              Icons.verified_user_outlined,
+              AuthorizedPickupsScreen(),
+            ),
+          ],
         ),
       ],
     );
@@ -567,6 +581,15 @@ class EducatorClassView extends StatelessWidget {
             );
           },
         ),
+        const SizedBox(height: 12),
+        const ModuleGrid(
+          modules: [
+            AppModule('Asistencia', Icons.qr_code_scanner, AttendanceScreen()),
+            AppModule('Mensajes', Icons.forum_outlined, MessagesScreen()),
+            AppModule('Fotos', Icons.add_a_photo_outlined, MediaScreen()),
+            AppModule('Calendario', Icons.event_outlined, CalendarScreen()),
+          ],
+        ),
         const SizedBox(height: 16),
         DataTable(
           headingRowHeight: 42,
@@ -656,6 +679,250 @@ class AdminDashboardView extends StatelessWidget {
             );
           },
         ),
+        const SizedBox(height: 12),
+        const ModuleGrid(
+          modules: [
+            AppModule('Alumnos', Icons.child_care_outlined, ChildrenScreen()),
+            AppModule(
+                'Comunicados', Icons.campaign_outlined, AnnouncementsScreen()),
+            AppModule('Calendario', Icons.event_outlined, CalendarScreen()),
+            AppModule('Menu', Icons.restaurant_menu_outlined, MenuScreen()),
+            AppModule('Fotos', Icons.collections_outlined, MediaScreen()),
+            AppModule('Mensajes', Icons.forum_outlined, MessagesScreen()),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+void openModule(BuildContext context, Widget screen) {
+  Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+}
+
+class AppModule {
+  const AppModule(this.title, this.icon, this.screen);
+
+  final String title;
+  final IconData icon;
+  final Widget screen;
+}
+
+class ModuleGrid extends StatelessWidget {
+  const ModuleGrid({super.key, required this.modules});
+
+  final List<AppModule> modules;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth > 720 ? 3 : 2;
+
+        return GridView.count(
+          crossAxisCount: columns,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: columns == 3 ? 2.5 : 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            for (final module in modules)
+              OutlinedButton.icon(
+                onPressed: () => openModule(context, module.screen),
+                icon: Icon(module.icon),
+                label: Text(module.title, overflow: TextOverflow.ellipsis),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class SimpleModuleScreen extends StatelessWidget {
+  const SimpleModuleScreen({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.items,
+    this.actionLabel,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final List<MetricItem> items;
+  final String? actionLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          children: [
+            HeaderBlock(
+              title: title,
+              subtitle: subtitle,
+              metric: 'Centro piloto',
+              icon: icon,
+            ),
+            const SizedBox(height: 12),
+            for (final item in items) ...[
+              InfoTile(title: item.title, value: item.value, icon: item.icon),
+              const SizedBox(height: 10),
+            ],
+            if (actionLabel != null)
+              PrimaryActionButton(label: actionLabel!, icon: Icons.add),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CalendarScreen extends StatelessWidget {
+  const CalendarScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const SimpleModuleScreen(
+      title: 'Calendario',
+      subtitle: 'Eventos y festivos',
+      icon: Icons.event_outlined,
+      actionLabel: 'Nuevo evento',
+      items: [
+        MetricItem('Viernes', 'Salida mensual', Icons.directions_bus_outlined),
+        MetricItem('Lunes', 'Centro cerrado', Icons.event_busy_outlined),
+      ],
+    );
+  }
+}
+
+class MenuScreen extends StatelessWidget {
+  const MenuScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const SimpleModuleScreen(
+      title: 'Menu',
+      subtitle: 'Comedor mensual',
+      icon: Icons.restaurant_menu_outlined,
+      actionLabel: 'Importar menu',
+      items: [
+        MetricItem('Hoy', 'Macarrones · merluza · fruta', Icons.restaurant),
+        MetricItem('Alergias', '2 dietas especiales', Icons.health_and_safety),
+      ],
+    );
+  }
+}
+
+class MessagesScreen extends StatelessWidget {
+  const MessagesScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const SimpleModuleScreen(
+      title: 'Mensajes',
+      subtitle: 'Conversaciones por categoria',
+      icon: Icons.forum_outlined,
+      actionLabel: 'Nuevo mensaje',
+      items: [
+        MetricItem('Salud', 'Mateo llega a las 10:00', Icons.healing_outlined),
+        MetricItem('Comedor', 'Cambio eventual viernes', Icons.restaurant),
+      ],
+    );
+  }
+}
+
+class MediaScreen extends StatelessWidget {
+  const MediaScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const SimpleModuleScreen(
+      title: 'Fotos',
+      subtitle: 'Momentos autorizados',
+      icon: Icons.photo_library_outlined,
+      actionLabel: 'Subir fotos',
+      items: [
+        MetricItem('Pintura', '4 fotos nuevas', Icons.palette_outlined),
+        MetricItem('Musica', '2 videos', Icons.music_note_outlined),
+      ],
+    );
+  }
+}
+
+class AuthorizedPickupsScreen extends StatelessWidget {
+  const AuthorizedPickupsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const SimpleModuleScreen(
+      title: 'Autorizados',
+      subtitle: 'Recogidas del nino',
+      icon: Icons.verified_user_outlined,
+      actionLabel: 'Nueva autorizacion',
+      items: [
+        MetricItem('Carlos', 'Padre · autorizado', Icons.person_outline),
+        MetricItem('Maria', 'Abuela · solo hoy', Icons.today_outlined),
+      ],
+    );
+  }
+}
+
+class AttendanceScreen extends StatelessWidget {
+  const AttendanceScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const SimpleModuleScreen(
+      title: 'Asistencia',
+      subtitle: 'Entrada y salida QR',
+      icon: Icons.qr_code_scanner,
+      actionLabel: 'Escanear QR',
+      items: [
+        MetricItem('Mateo', 'Entrada 08:37', Icons.login_outlined),
+        MetricItem('Clase Mariposas', '11 / 13 presentes', Icons.groups),
+      ],
+    );
+  }
+}
+
+class AnnouncementsScreen extends StatelessWidget {
+  const AnnouncementsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const SimpleModuleScreen(
+      title: 'Comunicados',
+      subtitle: 'Avisos del centro',
+      icon: Icons.campaign_outlined,
+      actionLabel: 'Publicar comunicado',
+      items: [
+        MetricItem('Salida mensual', '52 / 64 leidos', Icons.mark_email_read),
+        MetricItem('Recordatorio', 'Traer mochila y agua', Icons.notifications),
+      ],
+    );
+  }
+}
+
+class ChildrenScreen extends StatelessWidget {
+  const ChildrenScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const SimpleModuleScreen(
+      title: 'Alumnos',
+      subtitle: 'Expedientes y aulas',
+      icon: Icons.child_care_outlined,
+      actionLabel: 'Nueva alta',
+      items: [
+        MetricItem('Mateo', 'Clase Mariposas', Icons.child_care),
+        MetricItem('Documentos', '4 pendientes', Icons.description_outlined),
       ],
     );
   }

@@ -18,7 +18,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Clase Mariposas'), findsOneWidget);
-    expect(find.byIcon(Icons.qr_code_scanner), findsOneWidget);
+    expect(find.byIcon(Icons.qr_code_scanner), findsWidgets);
   });
 
   testWidgets('opens enrollment form from admin view', (tester) async {
