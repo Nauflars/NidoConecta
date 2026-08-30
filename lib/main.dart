@@ -143,22 +143,26 @@ class FamilyTodayView extends StatelessWidget {
       children: [
         HeaderBlock(
           title: 'Mateo',
-          subtitle: 'Hoy, martes 15 de septiembre',
-          metric: 'En la escuela desde 08:37',
+          subtitle: 'Agenda diaria',
+          metric: 'Martes 15 de septiembre · entrada 08:37',
           icon: Icons.child_care,
         ),
         SizedBox(height: 12),
-        DailyGrid(),
+        DailyNotebookCard(),
         SizedBox(height: 12),
         NoteCard(
-          title: 'Observación de la educadora',
-          text:
-              'Hoy ha participado mucho en pintura y ha estado tranquilo durante la siesta.',
+          title: 'Observaciones de la escuela',
+          text: 'Traer suero fisiologico y cochecito.',
         ),
         SizedBox(height: 12),
         NoteCard(
-          title: 'Casa',
-          text: 'Ha dormido regular y ha desayunado poco.',
+          title: 'Observaciones de casa',
+          text: 'Ha dormido regular. Esta manana no ha querido leche.',
+        ),
+        SizedBox(height: 12),
+        NoteCard(
+          title: 'Medicacion',
+          text: 'Sin medicacion pautada hoy.',
         ),
         SizedBox(height: 16),
         PrimaryActionButton(
@@ -166,6 +170,174 @@ class FamilyTodayView extends StatelessWidget {
           icon: Icons.chat_bubble_outline,
         ),
       ],
+    );
+  }
+}
+
+class DailyNotebookCard extends StatelessWidget {
+  const DailyNotebookCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colors.outlineVariant),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionTitle('Ha comido'),
+          FoodStatusRow(meal: 'Desayuno', amount: 'Todo'),
+          FoodStatusRow(meal: 'Comida', amount: 'Bastante'),
+          FoodStatusRow(meal: 'Merienda', amount: 'Poco'),
+          Divider(height: 24),
+          SectionTitle('Deposiciones'),
+          DayPartStatus(label: 'Manana', value: 'No'),
+          DayPartStatus(label: 'Tarde', value: 'Si'),
+          Divider(height: 24),
+          SectionTitle('Ha dormido'),
+          SleepStatus(label: 'Manana', quality: 'Bien', time: '12:50'),
+          SleepStatus(label: 'Tarde', quality: 'Bien', time: '14:50'),
+        ],
+      ),
+    );
+  }
+}
+
+class SectionTitle extends StatelessWidget {
+  const SectionTitle(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+      ),
+    );
+  }
+}
+
+class FoodStatusRow extends StatelessWidget {
+  const FoodStatusRow({super.key, required this.meal, required this.amount});
+
+  final String meal;
+  final String amount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(child: Text(meal)),
+          StatusDot(label: 'Todo', selected: amount == 'Todo'),
+          StatusDot(label: 'Bastante', selected: amount == 'Bastante'),
+          StatusDot(label: 'Poco', selected: amount == 'Poco'),
+          StatusDot(label: 'Nada', selected: amount == 'Nada'),
+        ],
+      ),
+    );
+  }
+}
+
+class DayPartStatus extends StatelessWidget {
+  const DayPartStatus({super.key, required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(child: Text(label)),
+          StatusDot(label: 'Si', selected: value == 'Si'),
+          StatusDot(label: 'No', selected: value == 'No'),
+        ],
+      ),
+    );
+  }
+}
+
+class SleepStatus extends StatelessWidget {
+  const SleepStatus({
+    super.key,
+    required this.label,
+    required this.quality,
+    required this.time,
+  });
+
+  final String label;
+  final String quality;
+  final String time;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(child: Text(label)),
+          StatusDot(label: 'Bien', selected: quality == 'Bien'),
+          StatusDot(label: 'Mal', selected: quality == 'Mal'),
+          const SizedBox(width: 8),
+          SizedBox(width: 54, child: Text(time, textAlign: TextAlign.end)),
+        ],
+      ),
+    );
+  }
+}
+
+class StatusDot extends StatelessWidget {
+  const StatusDot({super.key, required this.label, required this.selected});
+
+  final String label;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: Column(
+        children: [
+          Container(
+            width: 18,
+            height: 18,
+            decoration: BoxDecoration(
+              color: selected ? colors.primary : colors.surfaceContainerHighest,
+              shape: BoxShape.circle,
+              border: Border.all(color: colors.outlineVariant),
+            ),
+          ),
+          const SizedBox(height: 2),
+          SizedBox(
+            width: 48,
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -241,6 +413,18 @@ class EducatorClassView extends StatelessWidget {
             QuickAction(label: 'Fotos', icon: Icons.add_a_photo),
             QuickAction(label: 'Voz', icon: Icons.mic),
           ],
+        ),
+        const SizedBox(height: 12),
+        PrimaryActionButton(
+          label: 'Registrar agenda de Mateo',
+          icon: Icons.edit_note_outlined,
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const DailyReportFormScreen(),
+              ),
+            );
+          },
         ),
         const SizedBox(height: 16),
         DataTable(
@@ -330,6 +514,201 @@ class AdminDashboardView extends StatelessWidget {
               ),
             );
           },
+        ),
+      ],
+    );
+  }
+}
+
+class DailyReportFormScreen extends StatefulWidget {
+  const DailyReportFormScreen({super.key});
+
+  @override
+  State<DailyReportFormScreen> createState() => _DailyReportFormScreenState();
+}
+
+class _DailyReportFormScreenState extends State<DailyReportFormScreen> {
+  String _breakfast = 'Todo';
+  String _lunch = 'Bastante';
+  String _snack = 'Poco';
+  String _morningPoop = 'No';
+  String _afternoonPoop = 'Si';
+  String _morningSleep = 'Bien';
+  String _afternoonSleep = 'Bien';
+  final _morningSleepTime = TextEditingController(text: '12:50');
+  final _afternoonSleepTime = TextEditingController(text: '14:50');
+  final _schoolNotes = TextEditingController(
+    text: 'Traer suero fisiologico y cochecito.',
+  );
+  final _homeNotes = TextEditingController();
+  final _medication = TextEditingController();
+
+  @override
+  void dispose() {
+    _morningSleepTime.dispose();
+    _afternoonSleepTime.dispose();
+    _schoolNotes.dispose();
+    _homeNotes.dispose();
+    _medication.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Agenda de Mateo')),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          children: [
+            const HeaderBlock(
+              title: 'Mateo',
+              subtitle: 'Registro diario',
+              metric: 'Martes 15 de septiembre',
+              icon: Icons.edit_note_outlined,
+            ),
+            FormSection(
+              title: 'Ha comido',
+              children: [
+                ChoiceLine(
+                  label: 'Desayuno',
+                  value: _breakfast,
+                  options: const ['Todo', 'Bastante', 'Poco', 'Nada'],
+                  onChanged: (value) => setState(() => _breakfast = value),
+                ),
+                ChoiceLine(
+                  label: 'Comida',
+                  value: _lunch,
+                  options: const ['Todo', 'Bastante', 'Poco', 'Nada'],
+                  onChanged: (value) => setState(() => _lunch = value),
+                ),
+                ChoiceLine(
+                  label: 'Merienda',
+                  value: _snack,
+                  options: const ['Todo', 'Bastante', 'Poco', 'Nada'],
+                  onChanged: (value) => setState(() => _snack = value),
+                ),
+              ],
+            ),
+            FormSection(
+              title: 'Deposiciones',
+              children: [
+                ChoiceLine(
+                  label: 'Manana',
+                  value: _morningPoop,
+                  options: const ['Si', 'No'],
+                  onChanged: (value) => setState(() => _morningPoop = value),
+                ),
+                ChoiceLine(
+                  label: 'Tarde',
+                  value: _afternoonPoop,
+                  options: const ['Si', 'No'],
+                  onChanged: (value) => setState(() => _afternoonPoop = value),
+                ),
+              ],
+            ),
+            FormSection(
+              title: 'Ha dormido',
+              children: [
+                ChoiceLine(
+                  label: 'Manana',
+                  value: _morningSleep,
+                  options: const ['Bien', 'Mal', 'No'],
+                  onChanged: (value) => setState(() => _morningSleep = value),
+                ),
+                AppTextField(
+                  controller: _morningSleepTime,
+                  label: 'Hora manana',
+                  icon: Icons.schedule_outlined,
+                ),
+                ChoiceLine(
+                  label: 'Tarde',
+                  value: _afternoonSleep,
+                  options: const ['Bien', 'Mal', 'No'],
+                  onChanged: (value) => setState(() => _afternoonSleep = value),
+                ),
+                AppTextField(
+                  controller: _afternoonSleepTime,
+                  label: 'Hora tarde',
+                  icon: Icons.schedule_outlined,
+                ),
+              ],
+            ),
+            FormSection(
+              title: 'Notas',
+              children: [
+                AppTextField(
+                  controller: _schoolNotes,
+                  label: 'Observaciones de la escuela',
+                  icon: Icons.school_outlined,
+                  maxLines: 3,
+                ),
+                AppTextField(
+                  controller: _homeNotes,
+                  label: 'Observaciones de casa',
+                  icon: Icons.home_outlined,
+                  maxLines: 3,
+                ),
+                AppTextField(
+                  controller: _medication,
+                  label: 'Medicacion',
+                  icon: Icons.medication_outlined,
+                  maxLines: 2,
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 52,
+              child: FilledButton.icon(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Agenda guardada')),
+                  );
+                  Navigator.of(context).pop();
+                },
+                icon: const Icon(Icons.check_outlined),
+                label: const Text('Guardar agenda'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ChoiceLine extends StatelessWidget {
+  const ChoiceLine({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String value;
+  final List<String> options;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 6),
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<String>(
+            segments: [
+              for (final option in options)
+                ButtonSegment(value: option, label: Text(option)),
+            ],
+            selected: {value},
+            onSelectionChanged: (selection) => onChanged(selection.single),
+            showSelectedIcon: false,
+          ),
         ),
       ],
     );
