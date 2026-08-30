@@ -38,12 +38,147 @@ class NidoConectaApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF7F5EF),
         useMaterial3: true,
       ),
-      home: const HomeShell(),
+      home: isSupabaseConfigured ? const AuthGate() : const HomeShell(),
     );
   }
 }
 
 enum AppRole { family, educator, admin }
+
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<AuthState>(
+      stream: Supabase.instance.client.auth.onAuthStateChange,
+      builder: (context, snapshot) {
+        final session = Supabase.instance.client.auth.currentSession;
+        if (session == null) return const LoginScreen();
+        return const HomeShell();
+      },
+    );
+  }
+}
+
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('NidoConecta')),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+          children: [
+            const HeaderBlock(
+              title: 'Entrar',
+              subtitle: 'Cuenta de acceso',
+              metric: 'Usa el email recibido por invitacion',
+              icon: Icons.lock_outline,
+            ),
+            const SizedBox(height: 16),
+            AppTextField(
+              controller: _email,
+              label: 'Email',
+              icon: Icons.mail_outline,
+              keyboardType: TextInputType.emailAddress,
+              validator: emailField,
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _password,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Contrasena',
+                prefixIcon: Icon(Icons.password_outlined),
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 52,
+              child: FilledButton.icon(
+                onPressed: _loading ? null : _signIn,
+                icon: _loading
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.login_outlined),
+                label: Text(_loading ? 'Entrando' : 'Entrar'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: _loading ? null : _resetPassword,
+              child: const Text('Cambiar o recuperar contrasena'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _signIn() async {
+    setState(() => _loading = true);
+    try {
+      await Supabase.instance.client.auth.signInWithPassword(
+        email: _email.text.trim(),
+        password: _password.text,
+      );
+    } catch (error) {
+      _showError(error.toString());
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _resetPassword() async {
+    final email = _email.text.trim();
+    if (optionalEmailField(email) != null || email.isEmpty) {
+      _showError('Escribe tu email primero');
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      await Supabase.instance.client.auth.resetPasswordForEmail(email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email enviado')),
+      );
+    } catch (error) {
+      _showError(error.toString());
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+}
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -68,6 +203,12 @@ class _HomeShellState extends State<HomeShell> {
               icon: isSupabaseConfigured ? Icons.cloud_done : Icons.cloud_off,
             ),
           ),
+          if (isSupabaseConfigured)
+            IconButton(
+              tooltip: 'Salir',
+              onPressed: () => Supabase.instance.client.auth.signOut(),
+              icon: const Icon(Icons.logout_outlined),
+            ),
         ],
       ),
       body: SafeArea(
@@ -528,6 +669,11 @@ class DailyReportFormScreen extends StatefulWidget {
 }
 
 class _DailyReportFormScreenState extends State<DailyReportFormScreen> {
+  final _centerId = TextEditingController();
+  final _childId = TextEditingController();
+  final _reportDate = TextEditingController(
+    text: DateTime.now().toIso8601String().substring(0, 10),
+  );
   String _breakfast = 'Todo';
   String _lunch = 'Bastante';
   String _snack = 'Poco';
@@ -545,6 +691,9 @@ class _DailyReportFormScreenState extends State<DailyReportFormScreen> {
 
   @override
   void dispose() {
+    _centerId.dispose();
+    _childId.dispose();
+    _reportDate.dispose();
     _morningSleepTime.dispose();
     _afternoonSleepTime.dispose();
     _schoolNotes.dispose();
@@ -567,6 +716,31 @@ class _DailyReportFormScreenState extends State<DailyReportFormScreen> {
               metric: 'Martes 15 de septiembre',
               icon: Icons.edit_note_outlined,
             ),
+            if (isSupabaseConfigured)
+              FormSection(
+                title: 'Registro',
+                children: [
+                  AppTextField(
+                    controller: _centerId,
+                    label: 'ID del centro',
+                    icon: Icons.apartment_outlined,
+                    validator: requiredField,
+                  ),
+                  AppTextField(
+                    controller: _childId,
+                    label: 'ID del nino',
+                    icon: Icons.child_care_outlined,
+                    validator: requiredField,
+                  ),
+                  AppTextField(
+                    controller: _reportDate,
+                    label: 'Fecha',
+                    icon: Icons.event_outlined,
+                    hint: 'AAAA-MM-DD',
+                    validator: birthDateField,
+                  ),
+                ],
+              ),
             FormSection(
               title: 'Ha comido',
               children: [
@@ -660,12 +834,7 @@ class _DailyReportFormScreenState extends State<DailyReportFormScreen> {
             SizedBox(
               height: 52,
               child: FilledButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Agenda guardada')),
-                  );
-                  Navigator.of(context).pop();
-                },
+                onPressed: _saveDailyReport,
                 icon: const Icon(Icons.check_outlined),
                 label: const Text('Guardar agenda'),
               ),
@@ -674,6 +843,54 @@ class _DailyReportFormScreenState extends State<DailyReportFormScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _saveDailyReport() async {
+    if (isSupabaseConfigured) {
+      final missing = requiredField(_centerId.text) ??
+          requiredField(_childId.text) ??
+          birthDateField(_reportDate.text);
+      if (missing != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(missing)),
+        );
+        return;
+      }
+
+      try {
+        await Supabase.instance.client.from('daily_reports').upsert({
+          'center_id': _centerId.text.trim(),
+          'child_id': _childId.text.trim(),
+          'report_date': _reportDate.text.trim(),
+          'breakfast': mealToDb(_breakfast),
+          'lunch': mealToDb(_lunch),
+          'snack': mealToDb(_snack),
+          'morning_bowel_movement': _morningPoop == 'Si',
+          'afternoon_bowel_movement': _afternoonPoop == 'Si',
+          'morning_sleep': sleepToDb(_morningSleep),
+          'morning_sleep_time': emptyToNull(_morningSleepTime.text),
+          'afternoon_sleep': sleepToDb(_afternoonSleep),
+          'afternoon_sleep_time': emptyToNull(_afternoonSleepTime.text),
+          'school_notes': emptyToNull(_schoolNotes.text),
+          'home_notes': emptyToNull(_homeNotes.text),
+          'medication': emptyToNull(_medication.text),
+          'created_by': Supabase.instance.client.auth.currentUser?.id,
+          'updated_by': Supabase.instance.client.auth.currentUser?.id,
+        }, onConflict: 'child_id,report_date');
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+        return;
+      }
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Agenda guardada')),
+    );
+    Navigator.of(context).pop();
   }
 }
 
@@ -1355,4 +1572,26 @@ String? birthDateField(String? value) {
   if (parsed == null) return 'Usa formato AAAA-MM-DD';
   if (parsed.isAfter(DateTime.now())) return 'Fecha futura no valida';
   return null;
+}
+
+String mealToDb(String value) {
+  return switch (value) {
+    'Todo' => 'all',
+    'Bastante' => 'most',
+    'Poco' => 'little',
+    _ => 'none',
+  };
+}
+
+String sleepToDb(String value) {
+  return switch (value) {
+    'Bien' => 'good',
+    'Mal' => 'bad',
+    _ => 'none',
+  };
+}
+
+String? emptyToNull(String value) {
+  final trimmed = value.trim();
+  return trimmed.isEmpty ? null : trimmed;
 }
