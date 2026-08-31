@@ -35,3 +35,6 @@ jobs:
       - run: supabase functions deploy bootstrap-center
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      - run: supabase functions deploy seed-demo-school
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
