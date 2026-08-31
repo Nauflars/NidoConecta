@@ -1,0 +1,28 @@
+name: Seed Demo School
+
+on:
+  workflow_dispatch:
+    inputs:
+      default_password:
+        description: 'Temporary password for all demo users'
+        required: true
+        type: string
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Seed demo school
+        env:
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          WORKER_SECRET: ${{ secrets.WORKER_SECRET }}
+          DEFAULT_PASSWORD: ${{ inputs.default_password }}
+        run: |
+          curl --fail-with-body \
+            --request POST \
+            "https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/seed-demo-school" \
+            --header "apikey: ${SUPABASE_ANON_KEY}" \
+            --header "x-worker-secret: ${WORKER_SECRET}" \
+            --header "Content-Type: application/json" \
+            --data "{\"defaultPassword\":\"${DEFAULT_PASSWORD}\"}"

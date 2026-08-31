@@ -36,9 +36,25 @@ Ejemplos de familias:
 
 La funcion esta protegida con `WORKER_SECRET`.
 
+### Opcion recomendada: GitHub Actions
+
+1. En GitHub, entra en `Settings` -> `Secrets and variables` -> `Actions`.
+2. Comprueba que existen estos secrets:
+   - `SUPABASE_PROJECT_ID`
+   - `SUPABASE_ANON_KEY`
+   - `WORKER_SECRET`
+3. Entra en `Actions` -> `Seed Demo School` -> `Run workflow`.
+4. Escribe una contrasena temporal en `default_password`.
+5. Ejecuta el workflow.
+
+Esa contrasena sera la misma para todos los usuarios demo.
+
+### Opcion local
+
 ```powershell
 $headers = @{
   "x-worker-secret" = "<WORKER_SECRET>"
+  "apikey" = "<SUPABASE_ANON_KEY>"
   "Content-Type" = "application/json"
 }
 
@@ -48,7 +64,7 @@ $body = @{
 
 Invoke-RestMethod `
   -Method Post `
-  -Uri "<SUPABASE_URL>/functions/v1/seed-demo-school" `
+  -Uri "https://<SUPABASE_PROJECT_ID>.supabase.co/functions/v1/seed-demo-school" `
   -Headers $headers `
   -Body $body
 ```
