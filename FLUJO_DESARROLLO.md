@@ -58,6 +58,16 @@ Si el puerto esta ocupado, usar otro puerto y comunicar la URL exacta.
 
 Cuando haya que ejecutar tests/builds de nuevo, parar el servidor web para liberar locks de Flutter.
 
+## 3.1 Capturas y pruebas visuales
+
+Cuando haya cambios visuales importantes:
+
+- Usar Playwright MCP o Playwright local para abrir `http://127.0.0.1:53000`.
+- Revisar al menos vista familia, educadora, direccion y formularios tocados.
+- Capturar o inspeccionar escritorio y movil cuando cambie layout.
+
+Ver `PLAYWRIGHT_MCP.md` para arrancar el servidor MCP.
+
 ## 4. Git y GitHub
 
 Solo hacer commit cuando las validaciones locales esten en verde.

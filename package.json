@@ -1,0 +1,30 @@
+{
+  "name": "nidoconecta",
+  "version": "1.0.0",
+  "description": "NidoConecta es una aplicacion Flutter + Supabase para escuelas infantiles y guarderias. El objetivo es centralizar agenda diaria, asistencia por QR, comunicacion con familias, comedor, siestas, panales, fotos, comunicados, calendario y menus.",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nauflars/NidoConecta.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Nauflars/NidoConecta/issues"
+  },
+  "homepage": "https://github.com/Nauflars/NidoConecta#readme",
+  "devDependencies": {
+    "@playwright/mcp": "^0.0.79",
+    "@playwright/test": "^1.62.1",
+    "playwright": "^1.62.1"
+  }
+}
