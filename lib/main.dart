@@ -27,7 +27,7 @@ class NidoConectaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const seed = Color(0xFF1F7A68);
+    const seed = NidoColors.primary;
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -37,12 +37,87 @@ class NidoConectaApp extends StatelessWidget {
           seedColor: seed,
           brightness: Brightness.light,
         ),
-        scaffoldBackgroundColor: const Color(0xFFF7F5EF),
+        scaffoldBackgroundColor: NidoColors.canvas,
         useMaterial3: true,
+        appBarTheme: const AppBarTheme(
+          centerTitle: false,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          backgroundColor: NidoColors.canvas,
+          foregroundColor: NidoColors.ink,
+          titleTextStyle: TextStyle(
+            color: NidoColors.ink,
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        cardTheme: CardTheme(
+          color: Colors.white,
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: const BorderSide(color: NidoColors.line),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          prefixIconColor: NidoColors.muted,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 14,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: NidoColors.line),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: NidoColors.line),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: NidoColors.primary, width: 1.4),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            backgroundColor: NidoColors.primary,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            textStyle: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+        segmentedButtonTheme: SegmentedButtonThemeData(
+          style: ButtonStyle(
+            shape: WidgetStatePropertyAll(
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            side: const WidgetStatePropertyAll(
+                BorderSide(color: NidoColors.line)),
+            visualDensity: VisualDensity.compact,
+          ),
+        ),
       ),
       home: isSupabaseConfigured ? const AuthGate() : const HomeShell(),
     );
   }
+}
+
+class NidoColors {
+  static const primary = Color(0xFF2757D8);
+  static const ink = Color(0xFF182230);
+  static const muted = Color(0xFF667085);
+  static const canvas = Color(0xFFF3F6FB);
+  static const line = Color(0xFFDDE3EE);
+  static const blush = Color(0xFFFF6B8A);
+  static const mint = Color(0xFF16A085);
+  static const amber = Color(0xFFF4A62A);
+  static const sky = Color(0xFF43A6F6);
 }
 
 enum AppRole { family, educator, admin }
@@ -85,56 +160,75 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('NidoConecta')),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
-          children: [
-            const HeaderBlock(
-              title: 'Entrar',
-              subtitle: 'Cuenta de acceso',
-              metric: 'Usa el email recibido por invitacion',
-              icon: Icons.lock_outline,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 40, 20, 32),
+              shrinkWrap: true,
+              children: [
+                const Center(child: BrandMark(size: 56)),
+                const SizedBox(height: 18),
+                Text(
+                  'NidoConecta',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Accede con el email que recibiste del centro.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: NidoColors.muted,
+                      ),
+                ),
+                const SizedBox(height: 24),
+                FormSection(
+                  title: 'Entrar',
+                  children: [
+                    AppTextField(
+                      controller: _email,
+                      label: 'Email',
+                      icon: Icons.mail_outline,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: emailField,
+                    ),
+                    TextField(
+                      controller: _password,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Contrasena',
+                        prefixIcon: Icon(Icons.password_outlined),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 52,
+                      child: FilledButton.icon(
+                        onPressed: _loading ? null : _signIn,
+                        icon: _loading
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.login_outlined),
+                        label: Text(_loading ? 'Entrando' : 'Entrar'),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _loading ? null : _resetPassword,
+                      child: const Text('Cambiar o recuperar contrasena'),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            AppTextField(
-              controller: _email,
-              label: 'Email',
-              icon: Icons.mail_outline,
-              keyboardType: TextInputType.emailAddress,
-              validator: emailField,
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _password,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Contrasena',
-                prefixIcon: Icon(Icons.password_outlined),
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 52,
-              child: FilledButton.icon(
-                onPressed: _loading ? null : _signIn,
-                icon: _loading
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.login_outlined),
-                label: Text(_loading ? 'Entrando' : 'Entrar'),
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: _loading ? null : _resetPassword,
-              child: const Text('Cambiar o recuperar contrasena'),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -205,7 +299,14 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('NidoConecta'),
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            BrandMark(size: 34),
+            SizedBox(width: 10),
+            Text('NidoConecta'),
+          ],
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
@@ -234,28 +335,35 @@ class _HomeShellState extends State<HomeShell> {
             final selectedRole =
                 appContext.isDemo ? _role : appRoleFromContext(appContext.role);
 
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              children: [
-                if (appContext.isDemo)
-                  RoleSelector(selected: _role, onChanged: _setRole)
-                else
-                  StatusPill(
-                    label:
-                        '${appContext.centerName} · ${roleLabel(selectedRole)}',
-                    icon: Icons.verified_user_outlined,
-                  ),
-                const SizedBox(height: 16),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 240),
-                  child: switch (selectedRole) {
-                    AppRole.family => FamilyTodayView(appContext: appContext),
-                    AppRole.educator =>
-                      EducatorClassView(appContext: appContext),
-                    AppRole.admin => AdminDashboardView(appContext: appContext),
-                  },
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 980),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                  children: [
+                    if (appContext.isDemo)
+                      RoleSelector(selected: _role, onChanged: _setRole)
+                    else
+                      StatusPill(
+                        label:
+                            '${appContext.centerName} · ${roleLabel(selectedRole)}',
+                        icon: Icons.verified_user_outlined,
+                      ),
+                    const SizedBox(height: 16),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 240),
+                      child: switch (selectedRole) {
+                        AppRole.family =>
+                          FamilyTodayView(appContext: appContext),
+                        AppRole.educator =>
+                          EducatorClassView(appContext: appContext),
+                        AppRole.admin =>
+                          AdminDashboardView(appContext: appContext),
+                      },
+                    ),
+                  ],
                 ),
-              ],
+              ),
             );
           },
         ),
@@ -321,6 +429,38 @@ class RoleSelector extends StatelessWidget {
   }
 }
 
+class BrandMark extends StatelessWidget {
+  const BrandMark({super.key, this.size = 40});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [NidoColors.primary, NidoColors.blush],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(
+        child: Text(
+          'N',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: size * 0.48,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class FamilyTodayView extends StatelessWidget {
   const FamilyTodayView({super.key, required this.appContext});
 
@@ -341,49 +481,86 @@ class FamilyTodayView extends StatelessWidget {
           icon: Icons.child_care,
         ),
         const SizedBox(height: 12),
-        DailyNotebookLoader(appContext: appContext, child: child),
-        const SizedBox(height: 12),
-        const NoteCard(
-          title: 'Observaciones de la escuela',
-          text: 'Traer suero fisiologico y cochecito.',
-        ),
-        const SizedBox(height: 12),
-        const NoteCard(
-          title: 'Observaciones de casa',
-          text: 'Ha dormido regular. Esta manana no ha querido leche.',
-        ),
-        const SizedBox(height: 12),
-        const NoteCard(
-          title: 'Medicacion',
-          text: 'Sin medicacion pautada hoy.',
-        ),
-        const SizedBox(height: 16),
-        PrimaryActionButton(
-          label: 'Enviar informacion de casa',
-          icon: Icons.home_work_outlined,
-          onPressed: () => openModule(
-            context,
-            HomeReportFormScreen(appContext: appContext, child: child),
-          ),
-        ),
-        const SizedBox(height: 10),
-        PrimaryActionButton(
-          label: 'Enviar mensaje',
-          icon: Icons.chat_bubble_outline,
-          onPressed: () => openModule(context, const MessagesScreen()),
-        ),
-        const SizedBox(height: 16),
-        const ModuleGrid(
-          modules: [
-            AppModule('Calendario', Icons.event_outlined, CalendarScreen()),
-            AppModule('Menu', Icons.restaurant_menu_outlined, MenuScreen()),
-            AppModule('Fotos', Icons.photo_library_outlined, MediaScreen()),
-            AppModule(
-              'Autorizados',
-              Icons.verified_user_outlined,
-              AuthorizedPickupsScreen(),
-            ),
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final timeline = Column(
+              children: [
+                DailyNotebookLoader(appContext: appContext, child: child),
+                const SizedBox(height: 12),
+                const NoteCard(
+                  title: 'Observaciones de la escuela',
+                  text: 'Traer suero fisiologico y cochecito.',
+                ),
+                const SizedBox(height: 12),
+                const NoteCard(
+                  title: 'Observaciones de casa',
+                  text: 'Ha dormido regular. Esta manana no ha querido leche.',
+                ),
+                const SizedBox(height: 12),
+                const NoteCard(
+                  title: 'Medicacion',
+                  text: 'Sin medicacion pautada hoy.',
+                ),
+              ],
+            );
+
+            final actions = Column(
+              children: [
+                PrimaryActionButton(
+                  label: 'Enviar informacion de casa',
+                  icon: Icons.home_work_outlined,
+                  onPressed: () => openModule(
+                    context,
+                    HomeReportFormScreen(appContext: appContext, child: child),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                PrimaryActionButton(
+                  label: 'Enviar mensaje',
+                  icon: Icons.chat_bubble_outline,
+                  onPressed: () => openModule(context, const MessagesScreen()),
+                ),
+                const SizedBox(height: 16),
+                const ModuleGrid(
+                  modules: [
+                    AppModule(
+                      'Calendario',
+                      Icons.event_outlined,
+                      CalendarScreen(),
+                    ),
+                    AppModule(
+                        'Menu', Icons.restaurant_menu_outlined, MenuScreen()),
+                    AppModule(
+                        'Fotos', Icons.photo_library_outlined, MediaScreen()),
+                    AppModule(
+                      'Autorizados',
+                      Icons.verified_user_outlined,
+                      AuthorizedPickupsScreen(),
+                    ),
+                  ],
+                ),
+              ],
+            );
+
+            if (constraints.maxWidth < 760) {
+              return Column(
+                children: [
+                  timeline,
+                  const SizedBox(height: 16),
+                  actions,
+                ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 7, child: timeline),
+                const SizedBox(width: 16),
+                Expanded(flex: 4, child: actions),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -401,15 +578,54 @@ class DailyNotebookCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: colors.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.outlineVariant),
+        border: Border.all(color: NidoColors.line),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F101828),
+            blurRadius: 22,
+            offset: Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              const CircleAvatar(
+                radius: 22,
+                backgroundColor: Color(0xFFEAF0FF),
+                child:
+                    Icon(Icons.restaurant_outlined, color: NidoColors.primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Agenda de hoy',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                    Text(
+                      'Comida, descanso y cuidados',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: NidoColors.muted,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.more_horiz, color: colors.outline),
+            ],
+          ),
+          const SizedBox(height: 18),
           const SectionTitle('Ha comido'),
           FoodStatusRow(meal: 'Desayuno', amount: report.breakfast),
           FoodStatusRow(meal: 'Comida', amount: report.lunch),
@@ -581,13 +797,17 @@ class StatusDot extends StatelessWidget {
       padding: const EdgeInsets.only(left: 8),
       child: Column(
         children: [
-          Container(
-            width: 18,
-            height: 18,
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            width: 20,
+            height: 20,
             decoration: BoxDecoration(
-              color: selected ? colors.primary : colors.surfaceContainerHighest,
+              color: selected ? colors.primary : const Color(0xFFF3F6FB),
               shape: BoxShape.circle,
-              border: Border.all(color: colors.outlineVariant),
+              border: Border.all(
+                color: selected ? colors.primary : NidoColors.line,
+                width: selected ? 5 : 1,
+              ),
             ),
           ),
           const SizedBox(height: 2),
@@ -851,10 +1071,47 @@ class ModuleGrid extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           children: [
             for (final module in modules)
-              OutlinedButton.icon(
-                onPressed: () => openModule(context, module.screen),
-                icon: Icon(module.icon),
-                label: Text(module.title, overflow: TextOverflow.ellipsis),
+              Material(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: const BorderSide(color: NidoColors.line),
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => openModule(context, module.screen),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEAF0FF),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(module.icon, color: NidoColors.primary),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            module.title,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right,
+                          color: NidoColors.muted,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
           ],
         );
@@ -1887,15 +2144,13 @@ class FormSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colors.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.outlineVariant),
+        border: Border.all(color: NidoColors.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1903,7 +2158,7 @@ class FormSection extends StatelessWidget {
           Text(
             title,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w900,
                 ),
           ),
           const SizedBox(height: 12),
@@ -1969,31 +2224,49 @@ class HeaderBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: colors.primaryContainer,
+        gradient: const LinearGradient(
+          colors: [NidoColors.ink, Color(0xFF243B72)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 42, color: colors.onPrimaryContainer),
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: Colors.white,
+            child: Icon(icon, size: 30, color: NidoColors.primary),
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(subtitle, style: Theme.of(context).textTheme.labelLarge),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: const Color(0xFFC8D2EA),
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
                 Text(
                   title,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w800,
+                        color: Colors.white,
                       ),
                 ),
                 const SizedBox(height: 4),
-                Text(metric),
+                Text(
+                  metric,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFFE6EBF8),
+                      ),
+                ),
               ],
             ),
           ),
@@ -2017,20 +2290,18 @@ class InfoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: colors.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.outlineVariant),
+        border: Border.all(color: NidoColors.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: colors.primary, size: 20),
+          Icon(icon, color: NidoColors.primary, size: 22),
           const SizedBox(height: 6),
           Text(
             title,
@@ -2044,9 +2315,7 @@ class InfoTile extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: Theme.of(
               context,
-            ).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
         ],
       ),
@@ -2062,27 +2331,44 @@ class NoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colors.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.outlineVariant),
+        border: Border.all(color: NidoColors.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              const CircleAvatar(
+                radius: 16,
+                backgroundColor: Color(0xFFFFE8EE),
+                child: Icon(Icons.notes_outlined,
+                    size: 18, color: NidoColors.blush),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
           Text(
-            title,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
+            text,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: NidoColors.ink,
+                  height: 1.35,
                 ),
           ),
-          const SizedBox(height: 6),
-          Text(text),
         ],
       ),
     );
@@ -2097,10 +2383,14 @@ class QuickAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FilledButton.tonalIcon(
+    return ActionChip(
       onPressed: () {},
-      icon: Icon(icon),
+      avatar: Icon(icon, size: 18, color: NidoColors.primary),
       label: Text(label),
+      labelStyle: const TextStyle(fontWeight: FontWeight.w800),
+      backgroundColor: Colors.white,
+      side: const BorderSide(color: NidoColors.line),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     );
   }
 }
@@ -2126,6 +2416,10 @@ class PrimaryActionButton extends StatelessWidget {
         onPressed: onPressed ?? () {},
         icon: Icon(icon),
         label: Text(label),
+        style: FilledButton.styleFrom(
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+        ),
       ),
     );
   }
@@ -2139,13 +2433,13 @@ class StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     return Chip(
-      avatar: Icon(icon, size: 18),
+      avatar: Icon(icon, size: 18, color: NidoColors.primary),
       label: Text(label),
-      backgroundColor: colors.surface,
-      side: BorderSide(color: colors.outlineVariant),
+      labelStyle: const TextStyle(fontWeight: FontWeight.w700),
+      backgroundColor: Colors.white,
+      side: const BorderSide(color: NidoColors.line),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     );
   }
 }

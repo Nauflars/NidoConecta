@@ -39,7 +39,11 @@ void main() {
   testWidgets('opens home report form from family view', (tester) async {
     await pumpApp(tester);
 
-    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.scrollUntilVisible(
+      find.text('Enviar informacion de casa'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Enviar informacion de casa'));
     await tester.pumpAndSettle();
