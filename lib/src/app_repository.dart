@@ -1,70 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-enum NidoRole { family, educator, admin }
-
-class AppContextData {
-  const AppContextData({
-    required this.centerId,
-    required this.centerName,
-    required this.role,
-    required this.children,
-    required this.isDemo,
-  });
-
-  final String centerId;
-  final String centerName;
-  final NidoRole role;
-  final List<ChildSummary> children;
-  final bool isDemo;
-
-  ChildSummary get selectedChild => children.first;
-}
-
-class ChildSummary {
-  const ChildSummary({
-    required this.id,
-    required this.fullName,
-    required this.classroomName,
-  });
-
-  final String id;
-  final String fullName;
-  final String classroomName;
-}
-
-class DailyReportData {
-  const DailyReportData({
-    required this.childId,
-    required this.reportDate,
-    required this.breakfast,
-    required this.lunch,
-    required this.snack,
-    required this.morningBowelMovement,
-    required this.afternoonBowelMovement,
-    required this.morningSleep,
-    required this.morningSleepTime,
-    required this.afternoonSleep,
-    required this.afternoonSleepTime,
-    required this.schoolNotes,
-    required this.homeNotes,
-    required this.medication,
-  });
-
-  final String childId;
-  final DateTime reportDate;
-  final String breakfast;
-  final String lunch;
-  final String snack;
-  final bool morningBowelMovement;
-  final bool afternoonBowelMovement;
-  final String morningSleep;
-  final String? morningSleepTime;
-  final String afternoonSleep;
-  final String? afternoonSleepTime;
-  final String? schoolNotes;
-  final String? homeNotes;
-  final String? medication;
-}
+import 'application/demo_context.dart';
+import 'domain/nido_domain.dart';
 
 class AppRepository {
   AppRepository({SupabaseClient? client}) : _client = client;
@@ -72,19 +9,7 @@ class AppRepository {
   final SupabaseClient? _client;
 
   static AppContextData demoContext() {
-    return const AppContextData(
-      centerId: 'demo-center',
-      centerName: 'Centro piloto',
-      role: NidoRole.family,
-      isDemo: true,
-      children: [
-        ChildSummary(
-          id: 'demo-child-mateo',
-          fullName: 'Mateo',
-          classroomName: 'Clase Mariposas',
-        ),
-      ],
-    );
+    return DemoContextFactory.create();
   }
 
   Future<AppContextData> loadContext() async {
@@ -189,29 +114,4 @@ class AppRepository {
       medication: row['medication'] as String?,
     );
   }
-}
-
-NidoRole roleFromDb(String? value) {
-  return switch (value) {
-    'admin' => NidoRole.admin,
-    'educator' => NidoRole.educator,
-    _ => NidoRole.family,
-  };
-}
-
-String mealFromDb(String? value) {
-  return switch (value) {
-    'all' => 'Todo',
-    'most' => 'Bastante',
-    'little' => 'Poco',
-    _ => 'Nada',
-  };
-}
-
-String sleepFromDb(String? value) {
-  return switch (value) {
-    'good' => 'Bien',
-    'bad' => 'Mal',
-    _ => 'No',
-  };
 }

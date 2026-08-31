@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'src/app_repository.dart';
+import 'src/application/daily_report_payloads.dart';
+import 'src/application/enrollment_payload.dart';
+import 'src/domain/nido_domain.dart';
 
 bool isSupabaseConfigured = false;
 
@@ -1519,25 +1522,30 @@ class _DailyReportFormScreenState extends State<DailyReportFormScreen> {
       }
 
       try {
-        await Supabase.instance.client.from('daily_reports').upsert({
-          'center_id': _centerId.text.trim(),
-          'child_id': _childId.text.trim(),
-          'report_date': _reportDate.text.trim(),
-          'breakfast': mealToDb(_breakfast),
-          'lunch': mealToDb(_lunch),
-          'snack': mealToDb(_snack),
-          'morning_bowel_movement': _morningPoop == 'Si',
-          'afternoon_bowel_movement': _afternoonPoop == 'Si',
-          'morning_sleep': sleepToDb(_morningSleep),
-          'morning_sleep_time': emptyToNull(_morningSleepTime.text),
-          'afternoon_sleep': sleepToDb(_afternoonSleep),
-          'afternoon_sleep_time': emptyToNull(_afternoonSleepTime.text),
-          'school_notes': emptyToNull(_schoolNotes.text),
-          'home_notes': emptyToNull(_homeNotes.text),
-          'medication': emptyToNull(_medication.text),
-          'created_by': Supabase.instance.client.auth.currentUser?.id,
-          'updated_by': Supabase.instance.client.auth.currentUser?.id,
-        }, onConflict: 'child_id,report_date');
+        final payload = DailyReportPayloadBuilder.fromSchoolDraft(
+          SchoolDailyReportDraft(
+            centerId: _centerId.text,
+            childId: _childId.text,
+            reportDate: _reportDate.text,
+            breakfast: _breakfast,
+            lunch: _lunch,
+            snack: _snack,
+            morningPoop: _morningPoop,
+            afternoonPoop: _afternoonPoop,
+            morningSleep: _morningSleep,
+            morningSleepTime: _morningSleepTime.text,
+            afternoonSleep: _afternoonSleep,
+            afternoonSleepTime: _afternoonSleepTime.text,
+            schoolNotes: _schoolNotes.text,
+            homeNotes: _homeNotes.text,
+            medication: _medication.text,
+            userId: Supabase.instance.client.auth.currentUser?.id,
+          ),
+        );
+
+        await Supabase.instance.client
+            .from('daily_reports')
+            .upsert(payload, onConflict: 'child_id,report_date');
       } catch (error) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1714,22 +1722,23 @@ class _HomeReportFormScreenState extends State<HomeReportFormScreen> {
       }
 
       try {
-        final notes = [
-          'Sueno: $_sleep',
-          'Desayuno: $_breakfast',
-          'Deposicion en casa: $_bowelMovement',
-          if (_homeNotes.text.trim().isNotEmpty) _homeNotes.text.trim(),
-        ].join('\n');
+        final payload = DailyReportPayloadBuilder.fromHomeDraft(
+          HomeDailyReportDraft(
+            centerId: _centerId.text,
+            childId: _childId.text,
+            reportDate: _reportDate.text,
+            sleep: _sleep,
+            breakfast: _breakfast,
+            bowelMovement: _bowelMovement,
+            homeNotes: _homeNotes.text,
+            medication: _medication.text,
+            userId: Supabase.instance.client.auth.currentUser?.id,
+          ),
+        );
 
-        await Supabase.instance.client.from('daily_reports').upsert({
-          'center_id': _centerId.text.trim(),
-          'child_id': _childId.text.trim(),
-          'report_date': _reportDate.text.trim(),
-          'home_notes': notes,
-          'medication': emptyToNull(_medication.text),
-          'created_by': Supabase.instance.client.auth.currentUser?.id,
-          'updated_by': Supabase.instance.client.auth.currentUser?.id,
-        }, onConflict: 'child_id,report_date');
+        await Supabase.instance.client
+            .from('daily_reports')
+            .upsert(payload, onConflict: 'child_id,report_date');
       } catch (error) {
         if (!mounted) return;
         setState(() => _submitting = false);
@@ -2052,53 +2061,28 @@ class _EnrollmentFormScreenState extends State<EnrollmentFormScreen> {
 
     setState(() => _submitting = true);
 
-    final guardians = [
-      {
-        'fullName': _fatherName.text.trim(),
-        'email': _fatherEmail.text.trim(),
-        'relationship': 'Padre/tutor',
-        'phone': _fatherPhone.text.trim(),
-        'canPickUp': true,
-      },
-      if (_motherEmail.text.trim().isNotEmpty)
-        {
-          'fullName': _motherName.text.trim().isEmpty
-              ? 'Madre/tutora'
-              : _motherName.text.trim(),
-          'email': _motherEmail.text.trim(),
-          'relationship': 'Madre/tutora',
-          'phone': _motherPhone.text.trim(),
-          'canPickUp': true,
-        },
-    ];
-
-    final educators = [
-      if (_educatorEmail.text.trim().isNotEmpty)
-        {
-          'fullName': _educatorName.text.trim().isEmpty
-              ? 'Educadora'
-              : _educatorName.text.trim(),
-          'email': _educatorEmail.text.trim(),
-        },
-    ];
-
-    final payload = {
-      'centerId': _centerId.text.trim(),
-      'classroomId':
-          _classroomId.text.trim().isEmpty ? null : _classroomId.text.trim(),
-      'child': {
-        'fullName': _childName.text.trim(),
-        'birthDate': _birthDate.text.trim(),
-        'sex': _sex,
-        'allergies': _allergies.text.trim(),
-        'medicalNotes': _medicalNotes.text.trim(),
-        'notes': _notes.text.trim(),
-        'emergencyContactName': _emergencyName.text.trim(),
-        'emergencyContactPhone': _emergencyPhone.text.trim(),
-      },
-      'guardians': guardians,
-      'educators': educators,
-    };
+    final payload = EnrollmentPayloadBuilder.fromDraft(
+      EnrollmentDraft(
+        centerId: _centerId.text,
+        classroomId: _classroomId.text,
+        childFullName: _childName.text,
+        birthDate: _birthDate.text,
+        sex: _sex,
+        allergies: _allergies.text,
+        medicalNotes: _medicalNotes.text,
+        notes: _notes.text,
+        emergencyContactName: _emergencyName.text,
+        emergencyContactPhone: _emergencyPhone.text,
+        fatherName: _fatherName.text,
+        fatherEmail: _fatherEmail.text,
+        fatherPhone: _fatherPhone.text,
+        motherName: _motherName.text,
+        motherEmail: _motherEmail.text,
+        motherPhone: _motherPhone.text,
+        educatorName: _educatorName.text,
+        educatorEmail: _educatorEmail.text,
+      ),
+    );
 
     try {
       if (isSupabaseConfigured) {
@@ -2460,74 +2444,4 @@ class ChildRow {
   final String sleep;
   final String diaper;
   final String note;
-}
-
-String? requiredField(String? value) {
-  if (value == null || value.trim().isEmpty) {
-    return 'Campo obligatorio';
-  }
-  return null;
-}
-
-String? emailField(String? value) {
-  final required = requiredField(value);
-  if (required != null) return required;
-  return optionalEmailField(value);
-}
-
-String? optionalEmailField(String? value) {
-  final trimmed = value?.trim() ?? '';
-  if (trimmed.isEmpty) return null;
-  final valid = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(trimmed);
-  return valid ? null : 'Email no valido';
-}
-
-String? birthDateField(String? value) {
-  final required = requiredField(value);
-  if (required != null) return required;
-  final parsed = DateTime.tryParse(value!.trim());
-  if (parsed == null) return 'Usa formato AAAA-MM-DD';
-  if (parsed.isAfter(DateTime.now())) return 'Fecha futura no valida';
-  return null;
-}
-
-String mealToDb(String value) {
-  return switch (value) {
-    'Todo' => 'all',
-    'Bastante' => 'most',
-    'Poco' => 'little',
-    _ => 'none',
-  };
-}
-
-String sleepToDb(String value) {
-  return switch (value) {
-    'Bien' => 'good',
-    'Mal' => 'bad',
-    _ => 'none',
-  };
-}
-
-String? emptyToNull(String value) {
-  final trimmed = value.trim();
-  return trimmed.isEmpty ? null : trimmed;
-}
-
-DailyReportData demoDailyReport(String childId) {
-  return DailyReportData(
-    childId: childId,
-    reportDate: DateTime.now(),
-    breakfast: 'Todo',
-    lunch: 'Bastante',
-    snack: 'Poco',
-    morningBowelMovement: false,
-    afternoonBowelMovement: true,
-    morningSleep: 'Bien',
-    morningSleepTime: '12:50',
-    afternoonSleep: 'Bien',
-    afternoonSleepTime: '14:50',
-    schoolNotes: 'Traer suero fisiologico y cochecito.',
-    homeNotes: 'Ha dormido regular. Esta manana no ha querido leche.',
-    medication: 'Sin medicacion pautada hoy.',
-  );
 }

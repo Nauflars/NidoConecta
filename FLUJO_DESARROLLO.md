@@ -54,7 +54,7 @@ URL de test:
 http://127.0.0.1:53000
 ```
 
-Si el puerto esta ocupado, usar otro puerto y comunicar la URL exacta.
+Si el puerto esta ocupado, liberar el proceso anterior que escucha en `127.0.0.1:53000` y volver a usar el mismo puerto.
 
 Cuando haya que ejecutar tests/builds de nuevo, parar el servidor web para liberar locks de Flutter.
 
