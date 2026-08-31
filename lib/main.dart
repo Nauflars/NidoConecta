@@ -41,23 +41,29 @@ class NidoConectaApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(
           seedColor: seed,
           brightness: Brightness.light,
+          primary: NidoColors.primary,
+          secondary: NidoColors.sage,
+          surface: NidoColors.surface,
+          error: NidoColors.danger,
         ),
         scaffoldBackgroundColor: NidoColors.canvas,
         useMaterial3: true,
+        fontFamily: 'Fira Sans',
+        fontFamilyFallback: const ['Segoe UI', 'Roboto', 'Arial'],
         appBarTheme: const AppBarTheme(
           centerTitle: false,
           elevation: 0,
           scrolledUnderElevation: 0,
-          backgroundColor: NidoColors.canvas,
+          backgroundColor: NidoColors.surface,
           foregroundColor: NidoColors.ink,
           titleTextStyle: TextStyle(
             color: NidoColors.ink,
-            fontSize: 22,
+            fontSize: 21,
             fontWeight: FontWeight.w900,
           ),
         ),
         cardTheme: CardTheme(
-          color: Colors.white,
+          color: NidoColors.surface,
           elevation: 0,
           margin: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
@@ -67,8 +73,13 @@ class NidoConectaApp extends StatelessWidget {
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: Colors.white,
-          prefixIconColor: NidoColors.muted,
+          fillColor: NidoColors.surface,
+          prefixIconColor: NidoColors.sage,
+          labelStyle: const TextStyle(color: NidoColors.muted),
+          floatingLabelStyle: const TextStyle(
+            color: NidoColors.primary,
+            fontWeight: FontWeight.w800,
+          ),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 14,
             vertical: 14,
@@ -83,7 +94,7 @@ class NidoConectaApp extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: NidoColors.primary, width: 1.4),
+            borderSide: const BorderSide(color: NidoColors.sage, width: 1.4),
           ),
         ),
         filledButtonTheme: FilledButtonThemeData(
@@ -95,6 +106,7 @@ class NidoConectaApp extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             textStyle: const TextStyle(fontWeight: FontWeight.w800),
+            minimumSize: const Size(48, 48),
           ),
         ),
         segmentedButtonTheme: SegmentedButtonThemeData(
@@ -114,15 +126,38 @@ class NidoConectaApp extends StatelessWidget {
 }
 
 class NidoColors {
-  static const primary = Color(0xFF2757D8);
-  static const ink = Color(0xFF182230);
+  static const primary = Color(0xFF3157D5);
+  static const ink = Color(0xFF101828);
   static const muted = Color(0xFF667085);
-  static const canvas = Color(0xFFF3F6FB);
-  static const line = Color(0xFFDDE3EE);
-  static const blush = Color(0xFFFF6B8A);
-  static const mint = Color(0xFF16A085);
-  static const amber = Color(0xFFF4A62A);
-  static const sky = Color(0xFF43A6F6);
+  static const canvas = Color(0xFFF7F8F3);
+  static const surface = Color(0xFFFFFFFF);
+  static const surfaceWarm = Color(0xFFFFF7E8);
+  static const line = Color(0xFFE0E7DF);
+  static const blush = Color(0xFFE95872);
+  static const sage = Color(0xFF1E7A5F);
+  static const mint = Color(0xFF2FB184);
+  static const amber = Color(0xFFD9822B);
+  static const sky = Color(0xFF3B82F6);
+  static const danger = Color(0xFFB42318);
+  static const lavender = Color(0xFFEDEBFF);
+}
+
+class NidoShadows {
+  static const soft = [
+    BoxShadow(
+      color: Color(0x14101828),
+      blurRadius: 28,
+      offset: Offset(0, 16),
+    ),
+  ];
+
+  static const tight = [
+    BoxShadow(
+      color: Color(0x0F101828),
+      blurRadius: 16,
+      offset: Offset(0, 8),
+    ),
+  ];
 }
 
 enum AppRole { family, educator, admin }
@@ -165,73 +200,55 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 440),
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 40, 20, 32),
-              shrinkWrap: true,
-              children: [
-                const Center(child: BrandMark(size: 56)),
-                const SizedBox(height: 18),
-                Text(
-                  'NidoConecta',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Accede con el email que recibiste del centro.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: NidoColors.muted,
-                      ),
-                ),
-                const SizedBox(height: 24),
-                FormSection(
-                  title: 'Entrar',
-                  children: [
-                    AppTextField(
-                      controller: _email,
-                      label: 'Email',
-                      icon: Icons.mail_outline,
-                      keyboardType: TextInputType.emailAddress,
-                      validator: emailField,
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [NidoColors.canvas, Color(0xFFEFF5F0)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1040),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final wide = constraints.maxWidth >= 820;
+                  final form = LoginFormPanel(
+                    email: _email,
+                    password: _password,
+                    loading: _loading,
+                    onSignIn: _signIn,
+                    onResetPassword: _resetPassword,
+                  );
+
+                  return ListView(
+                    padding: EdgeInsets.fromLTRB(
+                      wide ? 28 : 20,
+                      wide ? 42 : 24,
+                      wide ? 28 : 20,
+                      32,
                     ),
-                    TextField(
-                      controller: _password,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Contrasena',
-                        prefixIcon: Icon(Icons.password_outlined),
-                      ),
-                    ),
-                    SizedBox(
-                      height: 52,
-                      child: FilledButton.icon(
-                        onPressed: _loading ? null : _signIn,
-                        icon: _loading
-                            ? const SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.login_outlined),
-                        label: Text(_loading ? 'Entrando' : 'Entrar'),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: _loading ? null : _resetPassword,
-                      child: const Text('Cambiar o recuperar contrasena'),
-                    ),
-                  ],
-                ),
-              ],
+                    children: [
+                      if (wide)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Expanded(child: LoginBrandPanel()),
+                            const SizedBox(width: 28),
+                            SizedBox(width: 430, child: form),
+                          ],
+                        )
+                      else ...[
+                        const LoginBrandPanel(compact: true),
+                        const SizedBox(height: 18),
+                        form,
+                      ],
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -281,6 +298,153 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
+class LoginBrandPanel extends StatelessWidget {
+  const LoginBrandPanel({super.key, this.compact = false});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(compact ? 18 : 28),
+      decoration: BoxDecoration(
+        color: NidoColors.ink,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: NidoShadows.soft,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const BrandMark(size: 52),
+          SizedBox(height: compact ? 20 : 46),
+          Text(
+            'NidoConecta',
+            style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  height: 1.02,
+                ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'La agenda viva del centro: aulas, familias y direccion en el mismo lugar.',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: const Color(0xFFE6EDE8),
+                  height: 1.35,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+          const SizedBox(height: 24),
+          const Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              LoginProofLine(
+                icon: Icons.verified_user_outlined,
+                label: 'Acceso por rol',
+              ),
+              LoginProofLine(
+                icon: Icons.insights_outlined,
+                label: 'Historial real',
+              ),
+              LoginProofLine(
+                icon: Icons.mail_outline,
+                label: 'Familias avisadas',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class LoginProofLine extends StatelessWidget {
+  const LoginProofLine({super.key, required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Chip(
+      avatar: Icon(icon, size: 17, color: Colors.white),
+      label: Text(label),
+      labelStyle: const TextStyle(
+        color: NidoColors.surface,
+        fontWeight: FontWeight.w800,
+      ),
+      backgroundColor: Colors.white.withOpacity(0.12),
+      side: BorderSide(color: Colors.white.withOpacity(0.16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    );
+  }
+}
+
+class LoginFormPanel extends StatelessWidget {
+  const LoginFormPanel({
+    super.key,
+    required this.email,
+    required this.password,
+    required this.loading,
+    required this.onSignIn,
+    required this.onResetPassword,
+  });
+
+  final TextEditingController email;
+  final TextEditingController password;
+  final bool loading;
+  final VoidCallback onSignIn;
+  final VoidCallback onResetPassword;
+
+  @override
+  Widget build(BuildContext context) {
+    return FormSection(
+      title: 'Entrar',
+      subtitle: 'Usa el email que recibiste del centro.',
+      children: [
+        AppTextField(
+          controller: email,
+          label: 'Email',
+          icon: Icons.mail_outline,
+          keyboardType: TextInputType.emailAddress,
+          validator: emailField,
+        ),
+        TextField(
+          controller: password,
+          obscureText: true,
+          decoration: const InputDecoration(
+            labelText: 'Contrasena',
+            prefixIcon: Icon(Icons.password_outlined),
+          ),
+        ),
+        SizedBox(
+          height: 52,
+          child: FilledButton.icon(
+            onPressed: loading ? null : onSignIn,
+            icon: loading
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.login_outlined),
+            label: Text(loading ? 'Entrando...' : 'Entrar'),
+          ),
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: loading ? null : onResetPassword,
+            icon: const Icon(Icons.lock_reset_outlined),
+            label: const Text('Cambiar o recuperar contrasena'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -304,6 +468,7 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        surfaceTintColor: Colors.transparent,
         title: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -342,21 +507,23 @@ class _HomeShellState extends State<HomeShell> {
 
             return Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 980),
+                constraints: const BoxConstraints(maxWidth: 1120),
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 40),
                   children: [
                     if (appContext.isDemo)
-                      RoleSelector(selected: _role, onChanged: _setRole)
+                      PremiumRoleSelector(selected: _role, onChanged: _setRole)
                     else
                       StatusPill(
                         label:
                             '${appContext.centerName} · ${roleLabel(selectedRole)}',
                         icon: Icons.verified_user_outlined,
                       ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
                     AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 240),
+                      duration: const Duration(milliseconds: 220),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
                       child: switch (selectedRole) {
                         AppRole.family =>
                           FamilyTodayView(appContext: appContext),
@@ -446,7 +613,7 @@ class BrandMark extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [NidoColors.primary, NidoColors.blush],
+          colors: [NidoColors.primary, NidoColors.sage],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -459,6 +626,154 @@ class BrandMark extends StatelessWidget {
             color: Colors.white,
             fontSize: size * 0.48,
             fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class PremiumRoleSelector extends StatelessWidget {
+  const PremiumRoleSelector({
+    super.key,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final AppRole selected;
+  final ValueChanged<AppRole> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: NidoColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: NidoShadows.tight,
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 520) {
+            return Row(
+              children: [
+                Expanded(
+                  child: RoleTab(
+                    selected: selected == AppRole.family,
+                    label: 'Familia',
+                    icon: Icons.home_outlined,
+                    onTap: () => onChanged(AppRole.family),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: RoleTab(
+                    selected: selected == AppRole.educator,
+                    label: 'Educadora',
+                    icon: Icons.groups_outlined,
+                    onTap: () => onChanged(AppRole.educator),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: RoleTab(
+                    selected: selected == AppRole.admin,
+                    label: 'Direccion',
+                    icon: Icons.dashboard_outlined,
+                    onTap: () => onChanged(AppRole.admin),
+                  ),
+                ),
+              ],
+            );
+          }
+
+          return SegmentedButton<AppRole>(
+            segments: const [
+              ButtonSegment(
+                value: AppRole.family,
+                label: Text('Familia'),
+                icon: Icon(Icons.home_outlined),
+              ),
+              ButtonSegment(
+                value: AppRole.educator,
+                label: Text('Educadora'),
+                icon: Icon(Icons.groups_outlined),
+              ),
+              ButtonSegment(
+                value: AppRole.admin,
+                label: Text('Direccion'),
+                icon: Icon(Icons.dashboard_outlined),
+              ),
+            ],
+            selected: {selected},
+            onSelectionChanged: (value) => onChanged(value.single),
+            showSelectedIcon: false,
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.selected)
+                    ? NidoColors.ink
+                    : Colors.transparent,
+              ),
+              foregroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.selected)
+                    ? Colors.white
+                    : NidoColors.ink,
+              ),
+              side: const WidgetStatePropertyAll(
+                BorderSide(color: Colors.transparent),
+              ),
+              padding: const WidgetStatePropertyAll(
+                EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class RoleTab extends StatelessWidget {
+  const RoleTab({
+    super.key,
+    required this.selected,
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final bool selected;
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = selected ? Colors.white : NidoColors.ink;
+
+    return Material(
+      color: selected ? NidoColors.ink : Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: SizedBox(
+          height: 58,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: foreground, size: 18),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: foreground,
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+            ],
           ),
         ),
       ),
@@ -587,14 +902,7 @@ class DailyNotebookCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: NidoColors.line),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0F101828),
-            blurRadius: 22,
-            offset: Offset(0, 10),
-          ),
-        ],
+        boxShadow: NidoShadows.tight,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -603,9 +911,8 @@ class DailyNotebookCard extends StatelessWidget {
             children: [
               const CircleAvatar(
                 radius: 22,
-                backgroundColor: Color(0xFFEAF0FF),
-                child:
-                    Icon(Icons.restaurant_outlined, color: NidoColors.primary),
+                backgroundColor: NidoColors.surfaceWarm,
+                child: Icon(Icons.restaurant_outlined, color: NidoColors.amber),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1258,7 +1565,7 @@ class AdminMetricsGrid extends StatelessWidget {
         final data = snapshot.data;
         final items = [
           MetricItem(
-            'NiÃ±os',
+            'Ninos',
             data == null ? '...' : '${data.childrenCount}',
             Icons.child_care_outlined,
           ),
@@ -1296,7 +1603,7 @@ class AdminMetricsGrid extends StatelessWidget {
               crossAxisCount: columns,
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
-              childAspectRatio: columns == 3 ? 1.8 : 1.2,
+              childAspectRatio: columns == 3 ? 2.25 : 1.65,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               children: [
@@ -1339,63 +1646,194 @@ class ModuleGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final columns = constraints.maxWidth > 720 ? 3 : 2;
+        const gap = 12.0;
+        final tileWidth =
+            (constraints.maxWidth - gap * (columns - 1)) / columns;
+        final compact =
+            MediaQuery.sizeOf(context).width < 1100 || tileWidth < 300;
 
         return GridView.count(
           crossAxisCount: columns,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: columns == 3 ? 2.5 : 2,
+          crossAxisSpacing: gap,
+          mainAxisSpacing: gap,
+          childAspectRatio: compact ? 2.6 : 2.5,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           children: [
             for (final module in modules)
-              Material(
-                color: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: const BorderSide(color: NidoColors.line),
-                ),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: () => openModule(context, module.screen),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEAF0FF),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(module.icon, color: NidoColors.primary),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            module.title,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleSmall
-                                ?.copyWith(fontWeight: FontWeight.w800),
-                          ),
-                        ),
-                        const Icon(
-                          Icons.chevron_right,
-                          color: NidoColors.muted,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              ModuleTile(module: module, compact: compact),
           ],
         );
       },
     );
   }
+}
+
+class ModuleTile extends StatelessWidget {
+  const ModuleTile({super.key, required this.module, required this.compact});
+
+  final AppModule module;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = nidoAccentFor(module.icon);
+
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.all(Radius.circular(8)),
+        boxShadow: NidoShadows.tight,
+      ),
+      child: Material(
+        color: NidoColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () => openModule(context, module.screen),
+          child: Padding(
+            padding: EdgeInsets.all(compact ? 10 : 16),
+            child: compact
+                ? Row(
+                    children: [
+                      ModuleIcon(icon: module.icon, color: accent, size: 34),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          module.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward,
+                        color: NidoColors.muted,
+                        size: 18,
+                      ),
+                    ],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          ModuleIcon(icon: module.icon, color: accent),
+                          const Spacer(),
+                          const Icon(
+                            Icons.arrow_forward,
+                            color: NidoColors.muted,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            module.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w900),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            moduleSubtitle(module.title),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: NidoColors.muted,
+                                      height: 1.25,
+                                    ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ModuleIcon extends StatelessWidget {
+  const ModuleIcon({
+    super.key,
+    required this.icon,
+    required this.color,
+    this.size = 40,
+  });
+
+  final IconData icon;
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(icon, color: color, size: size * 0.5),
+    );
+  }
+}
+
+String moduleSubtitle(String title) {
+  return switch (title) {
+    'Calendario' => 'Eventos, cierres y salidas.',
+    'Menu' => 'Comidas y alergias al dia.',
+    'Fotos' => 'Momentos listos para revisar.',
+    'Autorizados' => 'Recogidas y permisos activos.',
+    'Historial' => 'Tendencias y evolucion.',
+    'Asistencia' => 'Entradas, salidas y ausencias.',
+    'Agenda diaria' => 'Rutinas, descanso y cuidados.',
+    'Mensajes' => 'Conversaciones del centro.',
+    'Comunicados' => 'Avisos para familias.',
+    'Altas' => 'Ninos, familias y accesos.',
+    'Personal' => 'Educadoras y aulas asignadas.',
+    'Aulas' => 'Ratios y organizacion diaria.',
+    'Informes' => 'Seguimiento por centro y aula.',
+    _ => 'Acceso rapido del centro.',
+  };
+}
+
+Color nidoAccentFor(IconData icon) {
+  return switch (icon) {
+    Icons.restaurant ||
+    Icons.restaurant_outlined ||
+    Icons.restaurant_menu_outlined =>
+      NidoColors.amber,
+    Icons.child_care ||
+    Icons.child_care_outlined ||
+    Icons.groups_outlined ||
+    Icons.family_restroom_outlined =>
+      NidoColors.sage,
+    Icons.event_outlined ||
+    Icons.today_outlined ||
+    Icons.calendar_today_outlined =>
+      NidoColors.sky,
+    Icons.photo_library_outlined ||
+    Icons.camera_alt_outlined ||
+    Icons.collections_outlined =>
+      NidoColors.blush,
+    Icons.insights_outlined ||
+    Icons.bar_chart_outlined ||
+    Icons.edit_note_outlined =>
+      NidoColors.primary,
+    _ => NidoColors.primary,
+  };
 }
 
 class SimpleModuleScreen extends StatelessWidget {
@@ -2027,9 +2465,9 @@ class TrendCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: NidoColors.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: NidoColors.line),
+        boxShadow: NidoShadows.tight,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3730,20 +4168,26 @@ class _EnrollmentFormScreenState extends State<EnrollmentFormScreen> {
 }
 
 class FormSection extends StatelessWidget {
-  const FormSection({super.key, required this.title, required this.children});
+  const FormSection({
+    super.key,
+    required this.title,
+    this.subtitle,
+    required this.children,
+  });
 
   final String title;
+  final String? subtitle;
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: NidoColors.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: NidoColors.line),
+        boxShadow: NidoShadows.tight,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3754,7 +4198,17 @@ class FormSection extends StatelessWidget {
                   fontWeight: FontWeight.w900,
                 ),
           ),
-          const SizedBox(height: 12),
+          if (subtitle != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle!,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: NidoColors.muted,
+                    height: 1.35,
+                  ),
+            ),
+          ],
+          const SizedBox(height: 14),
           ...children.expand(
             (child) => [child, const SizedBox(height: 10)],
           ),
@@ -3818,23 +4272,24 @@ class HeaderBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [NidoColors.ink, Color(0xFF243B72)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: NidoColors.ink,
         borderRadius: BorderRadius.circular(8),
+        boxShadow: NidoShadows.soft,
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: Colors.white,
-            child: Icon(icon, size: 30, color: NidoColors.primary),
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: NidoColors.surfaceWarm,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 30, color: NidoColors.sage),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -3842,7 +4297,7 @@ class HeaderBlock extends StatelessWidget {
                 Text(
                   subtitle,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: const Color(0xFFC8D2EA),
+                        color: const Color(0xFFCFE5DA),
                         fontWeight: FontWeight.w700,
                       ),
                 ),
@@ -3857,7 +4312,7 @@ class HeaderBlock extends StatelessWidget {
                 Text(
                   metric,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFFE6EBF8),
+                        color: const Color(0xFFE6EDE8),
                       ),
                 ),
               ],
@@ -3883,32 +4338,54 @@ class InfoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accent = nidoAccentFor(icon);
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: NidoColors.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: NidoColors.line),
+        boxShadow: NidoShadows.tight,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, color: NidoColors.primary, size: 22),
-          const SizedBox(height: 6),
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelLarge,
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: accent.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: accent, size: 19),
           ),
-          Text(
-            value,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: NidoColors.muted,
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w900),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -3937,10 +4414,14 @@ class NoteCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const CircleAvatar(
-                radius: 16,
-                backgroundColor: Color(0xFFFFE8EE),
-                child: Icon(Icons.notes_outlined,
+              Container(
+                width: 32,
+                height: 32,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFE8EE),
+                  borderRadius: BorderRadius.all(Radius.circular(8)),
+                ),
+                child: const Icon(Icons.notes_outlined,
                     size: 18, color: NidoColors.blush),
               ),
               const SizedBox(width: 10),
@@ -3987,7 +4468,7 @@ class QuickAction extends StatelessWidget {
       avatar: Icon(icon, size: 18, color: NidoColors.primary),
       label: Text(label),
       labelStyle: const TextStyle(fontWeight: FontWeight.w800),
-      backgroundColor: Colors.white,
+      backgroundColor: NidoColors.surface,
       side: const BorderSide(color: NidoColors.line),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     );
@@ -4018,6 +4499,8 @@ class PrimaryActionButton extends StatelessWidget {
         style: FilledButton.styleFrom(
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: 18),
+          backgroundColor: NidoColors.ink,
+          foregroundColor: Colors.white,
         ),
       ),
     );
@@ -4036,7 +4519,7 @@ class StatusPill extends StatelessWidget {
       avatar: Icon(icon, size: 18, color: NidoColors.primary),
       label: Text(label),
       labelStyle: const TextStyle(fontWeight: FontWeight.w700),
-      backgroundColor: Colors.white,
+      backgroundColor: NidoColors.surface,
       side: const BorderSide(color: NidoColors.line),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     );
