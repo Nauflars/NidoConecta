@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'application/demo_context.dart';
+import 'application/history_metrics.dart';
 import 'domain/nido_domain.dart';
 
 class AppRepository {
@@ -262,6 +263,180 @@ class AppRepository {
     final client = _client;
     if (client == null) return;
     await client.from('media_assets').insert(payload);
+  }
+
+  Future<HistorySummaryData> loadHistorySummary(
+    AppContextData context, {
+    int days = 60,
+  }) async {
+    final toDate = DateTime.now();
+    final fromDate = DateTime(
+      toDate.year,
+      toDate.month,
+      toDate.day,
+    ).subtract(Duration(days: days - 1));
+
+    final client = _client;
+    if (client == null || context.isDemo) {
+      return _buildDemoHistory(context, fromDate: fromDate, toDate: toDate);
+    }
+
+    final from = fromDate.toIso8601String().substring(0, 10);
+    final to = toDate.toIso8601String().substring(0, 10);
+    final childIds = context.children.map((child) => child.id).toSet();
+
+    final results = await Future.wait([
+      client
+          .from('daily_reports')
+          .select(
+            'child_id, report_date, breakfast, lunch, snack, '
+            'morning_sleep, afternoon_sleep, school_notes, home_notes, '
+            'children(full_name, classrooms(name))',
+          )
+          .eq('center_id', context.centerId)
+          .gte('report_date', from)
+          .lte('report_date', to),
+      client
+          .from('attendance_events')
+          .select('child_id, occurred_at')
+          .eq('center_id', context.centerId)
+          .eq('event_type', 'check_in')
+          .gte('occurred_at', from)
+          .lte('occurred_at', '$to 23:59:59'),
+      client
+          .from('messages')
+          .select('child_id, created_at')
+          .eq('center_id', context.centerId)
+          .gte('created_at', from)
+          .lte('created_at', '$to 23:59:59'),
+      client
+          .from('media_assets')
+          .select('child_id, taken_on, created_at')
+          .eq('center_id', context.centerId)
+          .gte('created_at', from)
+          .lte('created_at', '$to 23:59:59'),
+    ]);
+
+    final reports =
+        (results[0] as List<dynamic>).map<HistoryReportInput>((row) {
+      final data = row as Map<String, dynamic>;
+      final childId = data['child_id'] as String;
+      final childData = data['children'] as Map<String, dynamic>?;
+      final classroom = childData?['classrooms'] as Map<String, dynamic>?;
+      final knownChild = context.children.where((child) => child.id == childId);
+      final child = knownChild.isEmpty
+          ? ChildSummary(
+              id: childId,
+              fullName: childData?['full_name'] as String? ?? 'Alumno',
+              classroomName: classroom?['name'] as String? ?? 'Sin aula',
+            )
+          : knownChild.first;
+
+      return HistoryReportInput(
+        child: child,
+        date: DateTime.parse(data['report_date'] as String),
+        breakfast: mealFromDb(data['breakfast'] as String?),
+        lunch: mealFromDb(data['lunch'] as String?),
+        snack: mealFromDb(data['snack'] as String?),
+        morningSleep: sleepFromDb(data['morning_sleep'] as String?),
+        afternoonSleep: sleepFromDb(data['afternoon_sleep'] as String?),
+        schoolNotes: data['school_notes'] as String?,
+        homeNotes: data['home_notes'] as String?,
+      );
+    }).where((report) {
+      return childIds.isEmpty || childIds.contains(report.child.id);
+    }).toList();
+
+    final attendance = (results[1] as List<dynamic>)
+        .map((row) => _eventFromRow(row as Map<String, dynamic>, 'occurred_at'))
+        .where((event) => childIds.isEmpty || childIds.contains(event.childId))
+        .toList();
+    final messages = (results[2] as List<dynamic>)
+        .map((row) => _eventFromRow(row as Map<String, dynamic>, 'created_at'))
+        .where((event) =>
+            event.childId == null || childIds.contains(event.childId))
+        .toList();
+    final media = (results[3] as List<dynamic>)
+        .map((row) => _eventFromRow(row as Map<String, dynamic>, 'created_at'))
+        .where((event) =>
+            event.childId == null || childIds.contains(event.childId))
+        .toList();
+
+    return HistoryMetricsBuilder.build(
+      children: context.children,
+      reports: reports,
+      attendance: attendance,
+      messages: messages,
+      media: media,
+      fromDate: fromDate,
+      toDate: toDate,
+    );
+  }
+
+  HistorySummaryData _buildDemoHistory(
+    AppContextData context, {
+    required DateTime fromDate,
+    required DateTime toDate,
+  }) {
+    final reports = <HistoryReportInput>[];
+    final attendance = <HistoryEventInput>[];
+    final messages = <HistoryEventInput>[];
+    final media = <HistoryEventInput>[];
+    const meals = ['Todo', 'Bastante', 'Poco'];
+    const sleeps = ['Bien', 'Bien', 'Regular'];
+
+    var cursor = DateTime(fromDate.year, fromDate.month, fromDate.day);
+    while (!cursor.isAfter(toDate)) {
+      if (cursor.weekday <= DateTime.friday) {
+        for (var index = 0; index < context.children.length; index += 1) {
+          final child = context.children[index];
+          final signature = cursor.day + index + child.fullName.length;
+          if (signature % 11 == 0) continue;
+          reports.add(
+            HistoryReportInput(
+              child: child,
+              date: cursor,
+              breakfast: meals[signature % meals.length],
+              lunch: meals[(signature + 1) % meals.length],
+              snack: meals[(signature + 2) % meals.length],
+              morningSleep: sleeps[signature % sleeps.length],
+              afternoonSleep: sleeps[(signature + 1) % sleeps.length],
+              schoolNotes: signature % 7 == 0
+                  ? 'Ha disfrutado especialmente del patio y juego simbolico.'
+                  : null,
+              homeNotes: signature % 9 == 0
+                  ? 'La familia informa descanso irregular.'
+                  : null,
+            ),
+          );
+          attendance.add(HistoryEventInput(childId: child.id, date: cursor));
+          if (signature % 5 == 0) {
+            media.add(HistoryEventInput(childId: child.id, date: cursor));
+          }
+          if (signature % 6 == 0) {
+            messages.add(HistoryEventInput(childId: child.id, date: cursor));
+          }
+        }
+      }
+      cursor = cursor.add(const Duration(days: 1));
+    }
+
+    return HistoryMetricsBuilder.build(
+      children: context.children,
+      reports: reports,
+      attendance: attendance,
+      messages: messages,
+      media: media,
+      fromDate: fromDate,
+      toDate: toDate,
+    );
+  }
+
+  HistoryEventInput _eventFromRow(Map<String, dynamic> row, String dateColumn) {
+    return HistoryEventInput(
+      childId: row['child_id'] as String?,
+      date: DateTime.parse(row[dateColumn] as String),
+    );
   }
 
   Future<List<MetricItemData>> loadModuleItems(

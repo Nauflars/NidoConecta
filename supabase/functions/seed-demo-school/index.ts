@@ -352,53 +352,90 @@ async function seedChildActivity(
   userIds: Map<string, string>,
 ) {
   const educatorId = userIds.get("laura.marti@nido-demo.test") ?? null;
-  await supabase.from("daily_reports").upsert({
-    center_id: centerId,
-    child_id: childId,
-    report_date: new Date().toISOString().substring(0, 10),
-    breakfast: "all",
-    lunch: "most",
-    snack: "little",
-    morning_bowel_movement: false,
-    afternoon_bowel_movement: true,
-    morning_sleep: "good",
-    morning_sleep_time: "12:45",
-    afternoon_sleep: "good",
-    afternoon_sleep_time: "14:15",
-    school_notes: "Ha participado en pintura y juego simbolico.",
-    home_notes: "Ha dormido bien y llega con su botella de agua.",
-    medication: null,
-    created_by: educatorId,
-    updated_by: educatorId,
-  }, { onConflict: "child_id,report_date" });
+  const today = startOfDay(new Date());
+  const meals = ["all", "most", "little"] as const;
+  const sleeps = ["good", "good", "bad", "none"] as const;
 
-  await supabase.from("attendance_events").insert({
-    center_id: centerId,
-    child_id: childId,
-    event_type: "check_in",
-    occurred_at: new Date().toISOString(),
-    actor_id: educatorId,
-    notes: "Entrada demo por QR del centro",
-  });
+  for (let offset = 59; offset >= 0; offset -= 1) {
+    const date = new Date(today);
+    date.setUTCDate(today.getUTCDate() - offset);
+    if (date.getUTCDay() === 0 || date.getUTCDay() === 6) continue;
 
-  await supabase.from("messages").insert({
-    center_id: centerId,
-    child_id: childId,
-    sender_id: educatorId,
-    category: "educator",
-    body: "Hoy trabajaremos autonomia, musica y juego de patio.",
-  });
+    const signature = date.getUTCDate() + childId.length + offset;
+    if (signature % 13 === 0) continue;
 
-  await supabase.from("media_assets").insert({
-    center_id: centerId,
-    child_id: childId,
-    kind: "photo",
-    storage_path: `demo/${childId}/pintura.jpg`,
-    title: "Actividad de pintura",
-    activity: "Pintura",
-    taken_on: new Date().toISOString().substring(0, 10),
-    uploaded_by: educatorId,
-  });
+    const reportDate = isoDate(date);
+    const sleep = sleeps[signature % sleeps.length];
+    const createdAt = `${reportDate}T16:30:00.000Z`;
+
+    await supabase.from("daily_reports").upsert({
+      center_id: centerId,
+      child_id: childId,
+      report_date: reportDate,
+      breakfast: meals[signature % meals.length],
+      lunch: meals[(signature + 1) % meals.length],
+      snack: meals[(signature + 2) % meals.length],
+      morning_bowel_movement: signature % 4 === 0,
+      afternoon_bowel_movement: signature % 3 === 0,
+      morning_sleep: sleep,
+      morning_sleep_time: sleep === "none" ? null : `11:${String(35 + signature % 20).padStart(2, "0")}`,
+      afternoon_sleep: sleep === "none" ? "none" : "good",
+      afternoon_sleep_time: sleep === "none" ? null : `14:${String(5 + signature % 45).padStart(2, "0")}`,
+      school_notes: signature % 7 === 0
+        ? "Le ha costado la despedida, despues ha estado tranquilo."
+        : "Dia estable con juego, patio y rutinas completadas.",
+      home_notes: signature % 8 === 0
+        ? "La familia avisa de descanso irregular."
+        : null,
+      medication: null,
+      created_by: educatorId,
+      updated_by: educatorId,
+      created_at: createdAt,
+      updated_at: createdAt,
+    }, { onConflict: "child_id,report_date" });
+
+    await supabase.from("attendance_events").insert({
+      center_id: centerId,
+      child_id: childId,
+      event_type: "check_in",
+      occurred_at: `${reportDate}T08:${String(42 + signature % 18).padStart(2, "0")}:00.000Z`,
+      actor_id: educatorId,
+      notes: "Entrada demo historica",
+    });
+
+    if (signature % 6 === 0) {
+      await supabase.from("messages").insert({
+        center_id: centerId,
+        child_id: childId,
+        sender_id: educatorId,
+        category: "educator",
+        body: `Seguimiento demo ${reportDate}: rutina revisada con la familia.`,
+        created_at: `${reportDate}T17:05:00.000Z`,
+      });
+    }
+
+    if (signature % 5 === 0) {
+      await supabase.from("media_assets").insert({
+        center_id: centerId,
+        child_id: childId,
+        kind: "photo",
+        storage_path: `demo/${childId}/${reportDate}-rutina.jpg`,
+        title: `Rutina ${reportDate.substring(5)}`,
+        activity: signature % 2 === 0 ? "Patio" : "Taller sensorial",
+        taken_on: reportDate,
+        uploaded_by: educatorId,
+        created_at: `${reportDate}T15:20:00.000Z`,
+      });
+    }
+  }
+}
+
+function startOfDay(value: Date) {
+  return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
+}
+
+function isoDate(value: Date) {
+  return value.toISOString().substring(0, 10);
 }
 
 async function seedCalendar(supabase: ReturnType<typeof createClient>, centerId: string) {

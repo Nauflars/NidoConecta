@@ -130,6 +130,38 @@ void main() {
     expect(find.text('Mensaje enviado'), findsOneWidget);
   });
 
+  testWidgets('family can open history insights', (tester) async {
+    await pumpApp(tester);
+
+    await tester.scrollUntilVisible(
+      find.text('Historial'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(find.text('Historial').last);
+    await tester.tap(find.text('Historial').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Historial y estadisticas'), findsOneWidget);
+    expect(find.text('Actividad reciente'), findsOneWidget);
+    expect(find.text('Evolucion del nino'), findsOneWidget);
+  });
+
+  testWidgets('admin can open center history insights', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 1500));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await pumpApp(tester);
+
+    await tester.tap(find.byIcon(Icons.dashboard_outlined));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.insights_outlined).last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Historial y estadisticas'), findsOneWidget);
+    expect(find.text('Aulas'), findsOneWidget);
+    expect(find.text('Alumnos'), findsOneWidget);
+  });
+
   testWidgets('educator can register attendance from quick actions',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1200, 1000));

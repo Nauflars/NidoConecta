@@ -534,6 +534,14 @@ class FamilyTodayView extends StatelessWidget {
                       Icons.verified_user_outlined,
                       AuthorizedPickupsScreen(appContext: appContext),
                     ),
+                    AppModule(
+                      'Historial',
+                      Icons.insights_outlined,
+                      HistoryInsightsScreen(
+                        appContext: appContext,
+                        role: NidoRole.family,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -1064,6 +1072,14 @@ class EducatorClassView extends StatelessWidget {
               Icons.event_outlined,
               CalendarScreen(appContext: appContext),
             ),
+            AppModule(
+              'Historial',
+              Icons.insights_outlined,
+              HistoryInsightsScreen(
+                appContext: appContext,
+                role: NidoRole.educator,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 16),
@@ -1211,6 +1227,14 @@ class AdminDashboardView extends StatelessWidget {
               'Mensajes',
               Icons.forum_outlined,
               MessagesScreen(appContext: appContext),
+            ),
+            AppModule(
+              'Historial',
+              Icons.insights_outlined,
+              HistoryInsightsScreen(
+                appContext: appContext,
+                role: NidoRole.admin,
+              ),
             ),
           ],
         ),
@@ -1807,6 +1831,463 @@ class StaffScreen extends StatelessWidget {
       ],
     );
   }
+}
+
+class HistoryInsightsScreen extends StatelessWidget {
+  const HistoryInsightsScreen({
+    super.key,
+    required this.appContext,
+    required this.role,
+  });
+
+  final AppContextData appContext;
+  final NidoRole role;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Historial')),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          children: [
+            HeaderBlock(
+              title: _historyTitle,
+              subtitle: 'Historial y estadisticas',
+              metric: 'Ultimos 60 dias',
+              icon: Icons.insights_outlined,
+            ),
+            const SizedBox(height: 12),
+            HistorySummaryLoader(appContext: appContext, role: role),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String get _historyTitle {
+    return switch (role) {
+      NidoRole.admin => appContext.centerName,
+      NidoRole.educator => appContext.selectedChild.classroomName,
+      NidoRole.family => appContext.selectedChild.fullName,
+    };
+  }
+}
+
+class HistorySummaryLoader extends StatelessWidget {
+  const HistorySummaryLoader({
+    super.key,
+    required this.appContext,
+    required this.role,
+  });
+
+  final AppContextData appContext;
+  final NidoRole role;
+
+  @override
+  Widget build(BuildContext context) {
+    final repository = AppRepository(
+      client: isSupabaseConfigured ? Supabase.instance.client : null,
+    );
+
+    return FutureBuilder<HistorySummaryData>(
+      future: repository.loadHistorySummary(appContext),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 32),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasError) {
+          return NoteCard(
+            title: 'No se pudo cargar el historial',
+            text: snapshot.error.toString(),
+          );
+        }
+
+        final data = snapshot.data;
+        if (data == null || data.reportsCount == 0) {
+          return const NoteCard(
+            title: 'Sin historial',
+            text:
+                'Todavia no hay registros suficientes para calcular metricas.',
+          );
+        }
+
+        return HistorySummaryContent(data: data, role: role);
+      },
+    );
+  }
+}
+
+class HistorySummaryContent extends StatelessWidget {
+  const HistorySummaryContent(
+      {super.key, required this.data, required this.role});
+
+  final HistorySummaryData data;
+  final NidoRole role;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        HistoryKpiGrid(data: data),
+        const SizedBox(height: 12),
+        TrendCard(data: data),
+        const SizedBox(height: 12),
+        if (role == NidoRole.admin) ...[
+          ClassroomStatsList(classrooms: data.classrooms),
+          const SizedBox(height: 12),
+        ],
+        ChildStatsList(children: data.children, role: role),
+      ],
+    );
+  }
+}
+
+class HistoryKpiGrid extends StatelessWidget {
+  const HistoryKpiGrid({super.key, required this.data});
+
+  final HistorySummaryData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      MetricItem(
+        'Agendas',
+        '${data.reportsCount}',
+        Icons.edit_note_outlined,
+      ),
+      MetricItem(
+        'Dias con datos',
+        '${data.reportDays}',
+        Icons.date_range_outlined,
+      ),
+      MetricItem(
+        'Asistencia',
+        _percent(data.attendanceRate),
+        Icons.how_to_reg_outlined,
+      ),
+      MetricItem(
+        'Comida',
+        _percent(data.mealScore),
+        Icons.restaurant_outlined,
+      ),
+      MetricItem(
+        'Descanso',
+        _percent(data.sleepRate),
+        Icons.bedtime_outlined,
+      ),
+      MetricItem(
+        'Interacciones',
+        '${data.messagesCount + data.mediaCount}',
+        Icons.forum_outlined,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth > 760 ? 3 : 2;
+        return GridView.count(
+          crossAxisCount: columns,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: columns == 3 ? 1.9 : 1.25,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            for (final item in items)
+              InfoTile(
+                title: item.title,
+                value: item.value,
+                icon: item.icon,
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class TrendCard extends StatelessWidget {
+  const TrendCard({super.key, required this.data});
+
+  final HistorySummaryData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxValue = data.timeline.fold<int>(1, (max, day) {
+      final value = day.reportsCount + day.attendanceCount;
+      return value > max ? value : max;
+    });
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: NidoColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const CircleAvatar(
+                radius: 18,
+                backgroundColor: Color(0xFFEAF0FF),
+                child: Icon(Icons.stacked_bar_chart,
+                    size: 20, color: NidoColors.primary),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Actividad reciente',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+              ),
+              Text(
+                '${_shortDate(data.fromDate)} - ${_shortDate(data.toDate)}',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: NidoColors.muted,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 120,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (final day in data.timeline) ...[
+                  Expanded(child: HistoryDayBar(day: day, maxValue: maxValue)),
+                  if (day != data.timeline.last) const SizedBox(width: 5),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class HistoryDayBar extends StatelessWidget {
+  const HistoryDayBar({super.key, required this.day, required this.maxValue});
+
+  final HistoryDayData day;
+  final int maxValue;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = day.reportsCount + day.attendanceCount;
+    final heightFactor = value == 0 ? 0.08 : value / maxValue;
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Expanded(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: FractionallySizedBox(
+              heightFactor: heightFactor.clamp(0.08, 1).toDouble(),
+              widthFactor: 1,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: day.messagesCount + day.mediaCount > 0
+                      ? NidoColors.blush
+                      : NidoColors.primary,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '${day.date.day}',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: NidoColors.muted,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class ClassroomStatsList extends StatelessWidget {
+  const ClassroomStatsList({super.key, required this.classrooms});
+
+  final List<ClassroomHistoryData> classrooms;
+
+  @override
+  Widget build(BuildContext context) {
+    return StatsListCard(
+      title: 'Aulas',
+      icon: Icons.groups_outlined,
+      children: [
+        for (final classroom in classrooms)
+          ProgressStatLine(
+            title: classroom.name,
+            subtitle:
+                '${classroom.childrenCount} ninos · ${classroom.reportsCount} agendas',
+            value: classroom.attendanceRate,
+            trailing: _percent(classroom.attendanceRate),
+          ),
+      ],
+    );
+  }
+}
+
+class ChildStatsList extends StatelessWidget {
+  const ChildStatsList({super.key, required this.children, required this.role});
+
+  final List<ChildHistoryData> children;
+  final NidoRole role;
+
+  @override
+  Widget build(BuildContext context) {
+    return StatsListCard(
+      title: role == NidoRole.family ? 'Evolucion del nino' : 'Alumnos',
+      icon: Icons.child_care_outlined,
+      children: [
+        for (final child in children.take(role == NidoRole.family ? 3 : 8))
+          ProgressStatLine(
+            title: child.child.fullName,
+            subtitle:
+                '${child.child.classroomName} · ${child.reportsCount} agendas · ${child.lastNote}',
+            value: child.mealScore,
+            trailing: _percent(child.sleepRate),
+          ),
+      ],
+    );
+  }
+}
+
+class StatsListCard extends StatelessWidget {
+  const StatsListCard({
+    super.key,
+    required this.title,
+    required this.icon,
+    required this.children,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: NidoColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: NidoColors.primary),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...children.expand((child) => [child, const SizedBox(height: 10)]),
+        ],
+      ),
+    );
+  }
+}
+
+class ProgressStatLine extends StatelessWidget {
+  const ProgressStatLine({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.trailing,
+  });
+
+  final String title;
+  final String subtitle;
+  final double value;
+  final String trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+            ),
+            Text(
+              trailing,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: NidoColors.primary,
+                fontWeight: FontWeight.w900,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Text(
+          subtitle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: NidoColors.muted,
+              ),
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            value: value.clamp(0, 1).toDouble(),
+            minHeight: 7,
+            backgroundColor: const Color(0xFFEAF0FF),
+            color: NidoColors.primary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _percent(double value) {
+  return '${(value.clamp(0, 1) * 100).round()}%';
+}
+
+String _shortDate(DateTime value) {
+  return '${value.day.toString().padLeft(2, '0')}/'
+      '${value.month.toString().padLeft(2, '0')}';
 }
 
 class AnnouncementFormScreen extends StatefulWidget {

@@ -114,6 +114,88 @@ class StaffMemberData {
   final String? phone;
 }
 
+class HistorySummaryData {
+  const HistorySummaryData({
+    required this.fromDate,
+    required this.toDate,
+    required this.reportDays,
+    required this.reportsCount,
+    required this.attendanceRate,
+    required this.mealScore,
+    required this.sleepRate,
+    required this.messagesCount,
+    required this.mediaCount,
+    required this.classrooms,
+    required this.children,
+    required this.timeline,
+  });
+
+  final DateTime fromDate;
+  final DateTime toDate;
+  final int reportDays;
+  final int reportsCount;
+  final double attendanceRate;
+  final double mealScore;
+  final double sleepRate;
+  final int messagesCount;
+  final int mediaCount;
+  final List<ClassroomHistoryData> classrooms;
+  final List<ChildHistoryData> children;
+  final List<HistoryDayData> timeline;
+}
+
+class ClassroomHistoryData {
+  const ClassroomHistoryData({
+    required this.name,
+    required this.childrenCount,
+    required this.reportsCount,
+    required this.attendanceRate,
+    required this.mealScore,
+    required this.sleepRate,
+  });
+
+  final String name;
+  final int childrenCount;
+  final int reportsCount;
+  final double attendanceRate;
+  final double mealScore;
+  final double sleepRate;
+}
+
+class ChildHistoryData {
+  const ChildHistoryData({
+    required this.child,
+    required this.reportsCount,
+    required this.attendanceDays,
+    required this.mealScore,
+    required this.sleepRate,
+    required this.lastNote,
+  });
+
+  final ChildSummary child;
+  final int reportsCount;
+  final int attendanceDays;
+  final double mealScore;
+  final double sleepRate;
+  final String lastNote;
+}
+
+class HistoryDayData {
+  const HistoryDayData({
+    required this.date,
+    required this.reportsCount,
+    required this.attendanceCount,
+    required this.messagesCount,
+    required this.mediaCount,
+  });
+
+  final DateTime date;
+  final int reportsCount;
+  final int attendanceCount;
+  final int messagesCount;
+  final int mediaCount;
+}
+
 enum ModuleKind {
   calendar,
   menu,
