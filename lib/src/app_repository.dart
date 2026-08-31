@@ -246,6 +246,24 @@ class AppRepository {
     await client.from('calendar_events').insert(payload);
   }
 
+  Future<void> createMessage(Map<String, dynamic> payload) async {
+    final client = _client;
+    if (client == null) return;
+    await client.from('messages').insert(payload);
+  }
+
+  Future<void> createAttendanceEvent(Map<String, dynamic> payload) async {
+    final client = _client;
+    if (client == null) return;
+    await client.from('attendance_events').insert(payload);
+  }
+
+  Future<void> createMediaAsset(Map<String, dynamic> payload) async {
+    final client = _client;
+    if (client == null) return;
+    await client.from('media_assets').insert(payload);
+  }
+
   Future<List<MetricItemData>> loadModuleItems(
     String centerId,
     ModuleKind kind,
@@ -314,7 +332,7 @@ class AppRepository {
         .from('messages')
         .select('category, body')
         .eq('center_id', centerId)
-        .order('created_at')
+        .order('created_at', ascending: false)
         .limit(10);
     return rows
         .map<MetricItemData>((row) => MetricItemData(
@@ -330,9 +348,9 @@ class AppRepository {
   ) async {
     final rows = await client
         .from('media_assets')
-        .select('title, activity, taken_on')
+        .select('title, activity, taken_on, created_at')
         .eq('center_id', centerId)
-        .order('taken_on')
+        .order('created_at', ascending: false)
         .limit(10);
     return rows
         .map<MetricItemData>((row) => MetricItemData(
@@ -369,7 +387,7 @@ class AppRepository {
         .from('attendance_events')
         .select('event_type, occurred_at, children(full_name)')
         .eq('center_id', centerId)
-        .order('occurred_at')
+        .order('occurred_at', ascending: false)
         .limit(10);
     return rows.map<MetricItemData>((row) {
       final child = row['children'] as Map<String, dynamic>?;
@@ -388,7 +406,7 @@ class AppRepository {
         .from('announcements')
         .select('title, body')
         .eq('center_id', centerId)
-        .order('created_at')
+        .order('created_at', ascending: false)
         .limit(10);
     return rows
         .map<MetricItemData>((row) => MetricItemData(

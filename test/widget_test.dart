@@ -110,6 +110,59 @@ void main() {
     expect(find.text('Informacion de casa'), findsOneWidget);
     expect(find.text('Como ha dormido'), findsOneWidget);
   });
+
+  testWidgets('family can send a real message draft', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.text('Enviar mensaje'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Nuevo mensaje'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Texto del mensaje'), findsOneWidget);
+    await tester.enterText(
+      find.byType(TextFormField).first,
+      'Hoy llegaremos diez minutos tarde.',
+    );
+    await tester.tap(find.text('Enviar mensaje').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mensaje enviado'), findsOneWidget);
+  });
+
+  testWidgets('educator can register attendance from quick actions',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await pumpApp(tester);
+
+    await tester.tap(find.text('Educadora'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Entrada'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Registrar entrada'), findsWidgets);
+    expect(find.text('Notas'), findsOneWidget);
+  });
+
+  testWidgets('educator can register a photo from quick actions',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await pumpApp(tester);
+
+    await tester.tap(find.text('Educadora'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Fotos').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Registrar foto'), findsWidgets);
+    await tester.tap(find.text('Registrar foto').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Titulo'), findsOneWidget);
+    expect(find.text('Fecha'), findsOneWidget);
+  });
 }
 
 Future<void> pumpApp(WidgetTester tester) async {

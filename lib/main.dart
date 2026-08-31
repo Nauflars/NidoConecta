@@ -5,6 +5,7 @@ import 'src/app_repository.dart';
 import 'src/application/admin_content_payloads.dart';
 import 'src/application/daily_report_payloads.dart';
 import 'src/application/enrollment_payload.dart';
+import 'src/application/module_action_payloads.dart';
 import 'src/domain/nido_domain.dart';
 
 bool isSupabaseConfigured = false;
@@ -487,26 +488,8 @@ class FamilyTodayView extends StatelessWidget {
         const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
-            final timeline = Column(
-              children: [
-                DailyNotebookLoader(appContext: appContext, child: child),
-                const SizedBox(height: 12),
-                const NoteCard(
-                  title: 'Observaciones de la escuela',
-                  text: 'Traer suero fisiologico y cochecito.',
-                ),
-                const SizedBox(height: 12),
-                const NoteCard(
-                  title: 'Observaciones de casa',
-                  text: 'Ha dormido regular. Esta manana no ha querido leche.',
-                ),
-                const SizedBox(height: 12),
-                const NoteCard(
-                  title: 'Medicacion',
-                  text: 'Sin medicacion pautada hoy.',
-                ),
-              ],
-            );
+            final timeline =
+                FamilyAgendaLoader(appContext: appContext, child: child);
 
             final actions = Column(
               children: [
@@ -705,6 +688,83 @@ class DailyNotebookLoader extends StatelessWidget {
   }
 }
 
+class FamilyAgendaLoader extends StatelessWidget {
+  const FamilyAgendaLoader({
+    super.key,
+    required this.appContext,
+    required this.child,
+  });
+
+  final AppContextData appContext;
+  final ChildSummary child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (appContext.isDemo) {
+      return FamilyAgendaContent(report: demoDailyReport(child.id));
+    }
+
+    return FutureBuilder<DailyReportData?>(
+      future: AppRepository(
+        client: Supabase.instance.client,
+      ).loadTodayReport(child.id),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasError) {
+          return NoteCard(
+            title: 'No se pudo cargar la agenda',
+            text: snapshot.error.toString(),
+          );
+        }
+
+        return FamilyAgendaContent(
+          report: snapshot.data ?? demoDailyReport(child.id),
+        );
+      },
+    );
+  }
+}
+
+class FamilyAgendaContent extends StatelessWidget {
+  const FamilyAgendaContent({super.key, required this.report});
+
+  final DailyReportData report;
+
+  @override
+  Widget build(BuildContext context) {
+    final notes = [
+      (
+        title: 'Observaciones de la escuela',
+        text: report.schoolNotes,
+      ),
+      (
+        title: 'Observaciones de casa',
+        text: report.homeNotes,
+      ),
+      (
+        title: 'Medicacion',
+        text: report.medication,
+      ),
+    ];
+
+    return Column(
+      children: [
+        DailyNotebookCard(report: report),
+        for (final note in notes)
+          if ((note.text ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 12),
+            NoteCard(title: note.title, text: note.text!.trim()),
+          ],
+      ],
+    );
+  }
+}
+
 class SectionTitle extends StatelessWidget {
   const SectionTitle(this.text, {super.key});
 
@@ -891,23 +951,78 @@ class EducatorClassView extends StatelessWidget {
       key: const ValueKey('educator'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const HeaderBlock(
-          title: 'Clase Mariposas',
+        HeaderBlock(
+          title: selectedChild.classroomName,
           subtitle: 'Panel de educadora',
           metric: 'Registro rapido',
           icon: Icons.groups,
         ),
         const SizedBox(height: 12),
-        const Wrap(
+        Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            QuickAction(label: 'Entrada', icon: Icons.qr_code_scanner),
-            QuickAction(label: 'Comida', icon: Icons.restaurant),
-            QuickAction(label: 'Siesta', icon: Icons.bedtime),
-            QuickAction(label: 'Pañal', icon: Icons.checklist),
-            QuickAction(label: 'Fotos', icon: Icons.add_a_photo),
-            QuickAction(label: 'Voz', icon: Icons.mic),
+            QuickAction(
+              label: 'Entrada',
+              icon: Icons.qr_code_scanner,
+              onPressed: () => openModule(
+                context,
+                AttendanceEventFormScreen(
+                  appContext: appContext,
+                  child: selectedChild,
+                  eventType: 'check_in',
+                ),
+              ),
+            ),
+            QuickAction(
+              label: 'Comida',
+              icon: Icons.restaurant,
+              onPressed: () => openModule(
+                context,
+                DailyReportFormScreen(
+                  appContext: appContext,
+                  child: selectedChild,
+                ),
+              ),
+            ),
+            QuickAction(
+              label: 'Siesta',
+              icon: Icons.bedtime,
+              onPressed: () => openModule(
+                context,
+                DailyReportFormScreen(
+                  appContext: appContext,
+                  child: selectedChild,
+                ),
+              ),
+            ),
+            QuickAction(
+              label: 'Pañal',
+              icon: Icons.checklist,
+              onPressed: () => openModule(
+                context,
+                DailyReportFormScreen(
+                  appContext: appContext,
+                  child: selectedChild,
+                ),
+              ),
+            ),
+            QuickAction(
+              label: 'Fotos',
+              icon: Icons.add_a_photo,
+              onPressed: () => openModule(
+                context,
+                MediaScreen(appContext: appContext),
+              ),
+            ),
+            QuickAction(
+              label: 'Mensaje',
+              icon: Icons.forum_outlined,
+              onPressed: () => openModule(
+                context,
+                MessageFormScreen(appContext: appContext),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -1471,6 +1586,22 @@ class MessagesScreen extends StatelessWidget {
       subtitle: 'Conversaciones por categoria',
       icon: Icons.forum_outlined,
       actionLabel: 'Nuevo mensaje',
+      onActionPressed: appContext == null
+          ? null
+          : (screenContext) async {
+              final created = await Navigator.of(screenContext).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => MessageFormScreen(appContext: appContext!),
+                ),
+              );
+              if (created == true && screenContext.mounted) {
+                Navigator.of(screenContext).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (_) => MessagesScreen(appContext: appContext),
+                  ),
+                );
+              }
+            },
       items: const [
         MetricItem('Salud', 'Mateo llega a las 10:00', Icons.healing_outlined),
         MetricItem('Comedor', 'Cambio eventual viernes', Icons.restaurant),
@@ -1492,7 +1623,26 @@ class MediaScreen extends StatelessWidget {
       title: 'Fotos',
       subtitle: 'Momentos autorizados',
       icon: Icons.photo_library_outlined,
-      actionLabel: 'Subir fotos',
+      actionLabel: 'Registrar foto',
+      onActionPressed: appContext == null ||
+              (!appContext!.isDemo && appContext!.role == NidoRole.family)
+          ? null
+          : (screenContext) async {
+              final created = await Navigator.of(screenContext).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => MediaAssetFormScreen(
+                    appContext: appContext!,
+                  ),
+                ),
+              );
+              if (created == true && screenContext.mounted) {
+                Navigator.of(screenContext).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (_) => MediaScreen(appContext: appContext),
+                  ),
+                );
+              }
+            },
       items: const [
         MetricItem('Pintura', '4 fotos nuevas', Icons.palette_outlined),
         MetricItem('Musica', '2 videos', Icons.music_note_outlined),
@@ -1537,6 +1687,26 @@ class AttendanceScreen extends StatelessWidget {
       subtitle: 'Entrada y salida QR',
       icon: Icons.qr_code_scanner,
       actionLabel: 'Escanear QR',
+      onActionPressed: appContext == null
+          ? null
+          : (screenContext) async {
+              final created = await Navigator.of(screenContext).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => AttendanceEventFormScreen(
+                    appContext: appContext!,
+                    child: appContext!.selectedChild,
+                    eventType: 'check_in',
+                  ),
+                ),
+              );
+              if (created == true && screenContext.mounted) {
+                Navigator.of(screenContext).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (_) => AttendanceScreen(appContext: appContext),
+                  ),
+                );
+              }
+            },
       items: const [
         MetricItem('Mateo', 'Entrada 08:37', Icons.login_outlined),
         MetricItem('Clase Mariposas', '11 / 13 presentes', Icons.groups),
@@ -1889,6 +2059,373 @@ class _CalendarEventFormScreenState extends State<CalendarEventFormScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Evento creado')),
+      );
+      Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+}
+
+class MessageFormScreen extends StatefulWidget {
+  const MessageFormScreen({super.key, required this.appContext});
+
+  final AppContextData appContext;
+
+  @override
+  State<MessageFormScreen> createState() => _MessageFormScreenState();
+}
+
+class _MessageFormScreenState extends State<MessageFormScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _body = TextEditingController();
+  String _category = 'Educadora';
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _body.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final child = widget.appContext.selectedChild;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Nuevo mensaje')),
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            children: [
+              HeaderBlock(
+                title: child.fullName,
+                subtitle: widget.appContext.centerName,
+                metric: 'Conversacion del alumno',
+                icon: Icons.forum_outlined,
+              ),
+              const SizedBox(height: 16),
+              FormSection(
+                title: 'Mensaje',
+                children: [
+                  ChoiceLine(
+                    label: 'Categoria',
+                    value: _category,
+                    options: const [
+                      'Educadora',
+                      'Salud',
+                      'Comedor',
+                      'Horario',
+                      'Administracion',
+                      'Otro',
+                    ],
+                    onChanged: (value) => setState(() => _category = value),
+                  ),
+                  AppTextField(
+                    controller: _body,
+                    label: 'Texto del mensaje',
+                    icon: Icons.notes_outlined,
+                    maxLines: 5,
+                    validator: requiredField,
+                  ),
+                ],
+              ),
+              SizedBox(
+                height: 52,
+                child: FilledButton.icon(
+                  onPressed: _submitting ? null : _submit,
+                  icon: _submitting
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.send_outlined),
+                  label: Text(_submitting ? 'Enviando' : 'Enviar mensaje'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _submitting = true);
+    final repository = AppRepository(
+      client: isSupabaseConfigured ? Supabase.instance.client : null,
+    );
+    final payload = ModuleActionPayloadBuilder.fromMessage(
+      MessageDraft(
+        centerId: widget.appContext.centerId,
+        childId: widget.appContext.selectedChild.id,
+        senderId: isSupabaseConfigured
+            ? Supabase.instance.client.auth.currentUser?.id
+            : null,
+        category: _category,
+        body: _body.text,
+      ),
+    );
+
+    try {
+      if (isSupabaseConfigured && !widget.appContext.isDemo) {
+        await repository.createMessage(payload);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mensaje enviado')),
+      );
+      Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+}
+
+class AttendanceEventFormScreen extends StatefulWidget {
+  const AttendanceEventFormScreen({
+    super.key,
+    required this.appContext,
+    required this.child,
+    required this.eventType,
+  });
+
+  final AppContextData appContext;
+  final ChildSummary child;
+  final String eventType;
+
+  @override
+  State<AttendanceEventFormScreen> createState() =>
+      _AttendanceEventFormScreenState();
+}
+
+class _AttendanceEventFormScreenState extends State<AttendanceEventFormScreen> {
+  final _notes = TextEditingController();
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _notes.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isCheckIn = widget.eventType == 'check_in';
+    final title = isCheckIn ? 'Registrar entrada' : 'Registrar salida';
+
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          children: [
+            HeaderBlock(
+              title: widget.child.fullName,
+              subtitle: widget.child.classroomName,
+              metric: title,
+              icon: isCheckIn ? Icons.login_outlined : Icons.logout_outlined,
+            ),
+            const SizedBox(height: 16),
+            FormSection(
+              title: 'Asistencia',
+              children: [
+                AppTextField(
+                  controller: _notes,
+                  label: 'Notas',
+                  icon: Icons.notes_outlined,
+                  maxLines: 3,
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 52,
+              child: FilledButton.icon(
+                onPressed: _submitting ? null : _submit,
+                icon: _submitting
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(isCheckIn
+                        ? Icons.login_outlined
+                        : Icons.logout_outlined),
+                label: Text(_submitting ? 'Guardando' : title),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    setState(() => _submitting = true);
+    final repository = AppRepository(
+      client: isSupabaseConfigured ? Supabase.instance.client : null,
+    );
+    final payload = ModuleActionPayloadBuilder.fromAttendance(
+      AttendanceEventDraft(
+        centerId: widget.appContext.centerId,
+        childId: widget.child.id,
+        actorId: isSupabaseConfigured
+            ? Supabase.instance.client.auth.currentUser?.id
+            : null,
+        eventType: widget.eventType,
+        notes: _notes.text,
+      ),
+    );
+
+    try {
+      if (isSupabaseConfigured && !widget.appContext.isDemo) {
+        await repository.createAttendanceEvent(payload);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Asistencia registrada')),
+      );
+      Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+}
+
+class MediaAssetFormScreen extends StatefulWidget {
+  const MediaAssetFormScreen({super.key, required this.appContext});
+
+  final AppContextData appContext;
+
+  @override
+  State<MediaAssetFormScreen> createState() => _MediaAssetFormScreenState();
+}
+
+class _MediaAssetFormScreenState extends State<MediaAssetFormScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _title = TextEditingController();
+  final _activity = TextEditingController();
+  final _takenOn = TextEditingController(
+    text: DateTime.now().toIso8601String().substring(0, 10),
+  );
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _activity.dispose();
+    _takenOn.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Registrar foto')),
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            children: [
+              HeaderBlock(
+                title: widget.appContext.selectedChild.classroomName,
+                subtitle: widget.appContext.centerName,
+                metric: 'Galeria del centro',
+                icon: Icons.add_a_photo_outlined,
+              ),
+              const SizedBox(height: 16),
+              FormSection(
+                title: 'Foto',
+                children: [
+                  AppTextField(
+                    controller: _title,
+                    label: 'Titulo',
+                    icon: Icons.title_outlined,
+                    validator: requiredField,
+                  ),
+                  AppTextField(
+                    controller: _activity,
+                    label: 'Actividad',
+                    icon: Icons.palette_outlined,
+                  ),
+                  AppTextField(
+                    controller: _takenOn,
+                    label: 'Fecha',
+                    icon: Icons.event_outlined,
+                    hint: 'AAAA-MM-DD',
+                    validator: dateField,
+                  ),
+                ],
+              ),
+              SizedBox(
+                height: 52,
+                child: FilledButton.icon(
+                  onPressed: _submitting ? null : _submit,
+                  icon: _submitting
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.add_a_photo_outlined),
+                  label: Text(_submitting ? 'Guardando' : 'Registrar foto'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _submitting = true);
+    final repository = AppRepository(
+      client: isSupabaseConfigured ? Supabase.instance.client : null,
+    );
+    final payload = ModuleActionPayloadBuilder.fromMediaAsset(
+      MediaAssetDraft(
+        centerId: widget.appContext.centerId,
+        childId: widget.appContext.selectedChild.id,
+        uploadedBy: isSupabaseConfigured
+            ? Supabase.instance.client.auth.currentUser?.id
+            : null,
+        title: _title.text,
+        activity: _activity.text,
+        takenOn: _takenOn.text,
+      ),
+    );
+
+    try {
+      if (isSupabaseConfigured && !widget.appContext.isDemo) {
+        await repository.createMediaAsset(payload);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Foto registrada')),
       );
       Navigator.of(context).pop(true);
     } catch (error) {
@@ -2951,15 +3488,21 @@ class NoteCard extends StatelessWidget {
 }
 
 class QuickAction extends StatelessWidget {
-  const QuickAction({super.key, required this.label, required this.icon});
+  const QuickAction({
+    super.key,
+    required this.label,
+    required this.icon,
+    this.onPressed,
+  });
 
   final String label;
   final IconData icon;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     return ActionChip(
-      onPressed: () {},
+      onPressed: onPressed,
       avatar: Icon(icon, size: 18, color: NidoColors.primary),
       label: Text(label),
       labelStyle: const TextStyle(fontWeight: FontWeight.w800),
