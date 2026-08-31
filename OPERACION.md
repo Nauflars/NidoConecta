@@ -23,6 +23,10 @@ flutter test
 flutter build apk --debug
 ```
 
+## Flujo De Desarrollo
+
+La rutina obligatoria despues de cada cambio esta documentada en `FLUJO_DESARROLLO.md`.
+
 ## Supabase
 
 Instalar Supabase CLI antes de desplegar migraciones desde local o CI.
