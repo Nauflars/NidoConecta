@@ -4,7 +4,7 @@ import 'package:nidoconecta/main.dart';
 
 void main() {
   testWidgets('shows the family daily summary by default', (tester) async {
-    await tester.pumpWidget(const NidoConectaApp());
+    await pumpApp(tester);
 
     expect(find.text('NidoConecta'), findsOneWidget);
     expect(find.text('Mateo'), findsOneWidget);
@@ -12,7 +12,7 @@ void main() {
   });
 
   testWidgets('switches to educator view', (tester) async {
-    await tester.pumpWidget(const NidoConectaApp());
+    await pumpApp(tester);
 
     await tester.tap(find.text('Educadora'));
     await tester.pumpAndSettle();
@@ -22,7 +22,7 @@ void main() {
   });
 
   testWidgets('opens enrollment form from admin view', (tester) async {
-    await tester.pumpWidget(const NidoConectaApp());
+    await pumpApp(tester);
 
     await tester.tap(find.byIcon(Icons.dashboard_outlined));
     await tester.pumpAndSettle();
@@ -37,7 +37,7 @@ void main() {
   });
 
   testWidgets('opens home report form from family view', (tester) async {
-    await tester.pumpWidget(const NidoConectaApp());
+    await pumpApp(tester);
 
     await tester.drag(find.byType(ListView), const Offset(0, -500));
     await tester.pumpAndSettle();
@@ -47,4 +47,9 @@ void main() {
     expect(find.text('Informacion de casa'), findsOneWidget);
     expect(find.text('Como ha dormido'), findsOneWidget);
   });
+}
+
+Future<void> pumpApp(WidgetTester tester) async {
+  await tester.pumpWidget(const NidoConectaApp());
+  await tester.pumpAndSettle();
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'src/app_repository.dart';
+
 bool isSupabaseConfigured = false;
 
 Future<void> main() async {
@@ -189,6 +191,15 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   AppRole _role = AppRole.family;
+  late final Future<AppContextData> _contextFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _contextFuture = AppRepository(
+      client: isSupabaseConfigured ? Supabase.instance.client : null,
+    ).loadContext();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -212,20 +223,41 @@ class _HomeShellState extends State<HomeShell> {
         ],
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          children: [
-            RoleSelector(selected: _role, onChanged: _setRole),
-            const SizedBox(height: 16),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 240),
-              child: switch (_role) {
-                AppRole.family => const FamilyTodayView(),
-                AppRole.educator => const EducatorClassView(),
-                AppRole.admin => const AdminDashboardView(),
-              },
-            ),
-          ],
+        child: FutureBuilder<AppContextData>(
+          future: _contextFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final appContext = snapshot.data ?? AppRepository.demoContext();
+            final selectedRole =
+                appContext.isDemo ? _role : appRoleFromContext(appContext.role);
+
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              children: [
+                if (appContext.isDemo)
+                  RoleSelector(selected: _role, onChanged: _setRole)
+                else
+                  StatusPill(
+                    label:
+                        '${appContext.centerName} · ${roleLabel(selectedRole)}',
+                    icon: Icons.verified_user_outlined,
+                  ),
+                const SizedBox(height: 16),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 240),
+                  child: switch (selectedRole) {
+                    AppRole.family => FamilyTodayView(appContext: appContext),
+                    AppRole.educator =>
+                      EducatorClassView(appContext: appContext),
+                    AppRole.admin => AdminDashboardView(appContext: appContext),
+                  },
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -234,6 +266,22 @@ class _HomeShellState extends State<HomeShell> {
   void _setRole(AppRole role) {
     setState(() => _role = role);
   }
+}
+
+AppRole appRoleFromContext(NidoRole role) {
+  return switch (role) {
+    NidoRole.admin => AppRole.admin,
+    NidoRole.educator => AppRole.educator,
+    NidoRole.family => AppRole.family,
+  };
+}
+
+String roleLabel(AppRole role) {
+  return switch (role) {
+    AppRole.admin => 'Direccion',
+    AppRole.educator => 'Educadora',
+    AppRole.family => 'Familia',
+  };
 }
 
 class RoleSelector extends StatelessWidget {
@@ -274,22 +322,26 @@ class RoleSelector extends StatelessWidget {
 }
 
 class FamilyTodayView extends StatelessWidget {
-  const FamilyTodayView({super.key});
+  const FamilyTodayView({super.key, required this.appContext});
+
+  final AppContextData appContext;
 
   @override
   Widget build(BuildContext context) {
+    final child = appContext.selectedChild;
+
     return Column(
       key: const ValueKey('family'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const HeaderBlock(
-          title: 'Mateo',
+        HeaderBlock(
+          title: child.fullName,
           subtitle: 'Agenda diaria',
-          metric: 'Martes 15 de septiembre · entrada 08:37',
+          metric: '${child.classroomName} · hoy',
           icon: Icons.child_care,
         ),
         const SizedBox(height: 12),
-        const DailyNotebookCard(),
+        DailyNotebookLoader(appContext: appContext, child: child),
         const SizedBox(height: 12),
         const NoteCard(
           title: 'Observaciones de la escuela',
@@ -309,7 +361,10 @@ class FamilyTodayView extends StatelessWidget {
         PrimaryActionButton(
           label: 'Enviar informacion de casa',
           icon: Icons.home_work_outlined,
-          onPressed: () => openModule(context, const HomeReportFormScreen()),
+          onPressed: () => openModule(
+            context,
+            HomeReportFormScreen(appContext: appContext, child: child),
+          ),
         ),
         const SizedBox(height: 10),
         PrimaryActionButton(
@@ -324,11 +379,6 @@ class FamilyTodayView extends StatelessWidget {
             AppModule('Menu', Icons.restaurant_menu_outlined, MenuScreen()),
             AppModule('Fotos', Icons.photo_library_outlined, MediaScreen()),
             AppModule(
-              'Casa',
-              Icons.home_work_outlined,
-              HomeReportFormScreen(),
-            ),
-            AppModule(
               'Autorizados',
               Icons.verified_user_outlined,
               AuthorizedPickupsScreen(),
@@ -341,7 +391,9 @@ class FamilyTodayView extends StatelessWidget {
 }
 
 class DailyNotebookCard extends StatelessWidget {
-  const DailyNotebookCard({super.key});
+  const DailyNotebookCard({super.key, required this.report});
+
+  final DailyReportData report;
 
   @override
   Widget build(BuildContext context) {
@@ -355,23 +407,70 @@ class DailyNotebookCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: colors.outlineVariant),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SectionTitle('Ha comido'),
-          FoodStatusRow(meal: 'Desayuno', amount: 'Todo'),
-          FoodStatusRow(meal: 'Comida', amount: 'Bastante'),
-          FoodStatusRow(meal: 'Merienda', amount: 'Poco'),
-          Divider(height: 24),
-          SectionTitle('Deposiciones'),
-          DayPartStatus(label: 'Manana', value: 'No'),
-          DayPartStatus(label: 'Tarde', value: 'Si'),
-          Divider(height: 24),
-          SectionTitle('Ha dormido'),
-          SleepStatus(label: 'Manana', quality: 'Bien', time: '12:50'),
-          SleepStatus(label: 'Tarde', quality: 'Bien', time: '14:50'),
+          const SectionTitle('Ha comido'),
+          FoodStatusRow(meal: 'Desayuno', amount: report.breakfast),
+          FoodStatusRow(meal: 'Comida', amount: report.lunch),
+          FoodStatusRow(meal: 'Merienda', amount: report.snack),
+          const Divider(height: 24),
+          const SectionTitle('Deposiciones'),
+          DayPartStatus(
+            label: 'Manana',
+            value: report.morningBowelMovement ? 'Si' : 'No',
+          ),
+          DayPartStatus(
+            label: 'Tarde',
+            value: report.afternoonBowelMovement ? 'Si' : 'No',
+          ),
+          const Divider(height: 24),
+          const SectionTitle('Ha dormido'),
+          SleepStatus(
+            label: 'Manana',
+            quality: report.morningSleep,
+            time: report.morningSleepTime ?? '-',
+          ),
+          SleepStatus(
+            label: 'Tarde',
+            quality: report.afternoonSleep,
+            time: report.afternoonSleepTime ?? '-',
+          ),
         ],
       ),
+    );
+  }
+}
+
+class DailyNotebookLoader extends StatelessWidget {
+  const DailyNotebookLoader({
+    super.key,
+    required this.appContext,
+    required this.child,
+  });
+
+  final AppContextData appContext;
+  final ChildSummary child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (appContext.isDemo) {
+      return DailyNotebookCard(report: demoDailyReport(child.id));
+    }
+
+    return FutureBuilder<DailyReportData?>(
+      future: AppRepository(
+        client: Supabase.instance.client,
+      ).loadTodayReport(child.id),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return DailyNotebookCard(
+          report: snapshot.data ?? demoDailyReport(child.id),
+        );
+      },
     );
   }
 }
@@ -546,16 +645,24 @@ class DailyGrid extends StatelessWidget {
 }
 
 class EducatorClassView extends StatelessWidget {
-  const EducatorClassView({super.key});
+  const EducatorClassView({super.key, required this.appContext});
+
+  final AppContextData appContext;
 
   @override
   Widget build(BuildContext context) {
-    const children = [
-      ChildRow('Mateo', 'Todo', '1h 22min', '3', ''),
-      ChildRow('Lucas', 'Bastante', 'Activa', '2', 'Nota'),
-      ChildRow('Ana', 'Todo', '50min', '-', ''),
-      ChildRow('Leo', 'Poco', '1h 05min', '2', 'Revisar'),
-    ];
+    final selectedChild = appContext.selectedChild;
+    final children = appContext.isDemo
+        ? const [
+            ChildRow('Mateo', 'Todo', '1h 22min', '3', ''),
+            ChildRow('Lucas', 'Bastante', 'Activa', '2', 'Nota'),
+            ChildRow('Ana', 'Todo', '50min', '-', ''),
+            ChildRow('Leo', 'Poco', '1h 05min', '2', 'Revisar'),
+          ]
+        : [
+            for (final child in appContext.children)
+              ChildRow(child.fullName, '-', '-', '-', child.classroomName),
+          ];
 
     return Column(
       key: const ValueKey('educator'),
@@ -563,8 +670,8 @@ class EducatorClassView extends StatelessWidget {
       children: [
         const HeaderBlock(
           title: 'Clase Mariposas',
-          subtitle: '13 niños',
-          metric: '57 acciones registradas hoy',
+          subtitle: 'Panel de educadora',
+          metric: 'Registro rapido',
           icon: Icons.groups,
         ),
         const SizedBox(height: 12),
@@ -582,12 +689,15 @@ class EducatorClassView extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         PrimaryActionButton(
-          label: 'Registrar agenda de Mateo',
+          label: 'Registrar agenda de ${selectedChild.fullName}',
           icon: Icons.edit_note_outlined,
           onPressed: () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => const DailyReportFormScreen(),
+                builder: (_) => DailyReportFormScreen(
+                  appContext: appContext,
+                  child: selectedChild,
+                ),
               ),
             );
           },
@@ -632,7 +742,9 @@ class EducatorClassView extends StatelessWidget {
 }
 
 class AdminDashboardView extends StatelessWidget {
-  const AdminDashboardView({super.key});
+  const AdminDashboardView({super.key, required this.appContext});
+
+  final AppContextData appContext;
 
   @override
   Widget build(BuildContext context) {
@@ -649,9 +761,9 @@ class AdminDashboardView extends StatelessWidget {
       key: const ValueKey('admin'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const HeaderBlock(
-          title: 'Centro piloto',
-          subtitle: 'Panel de dirección',
+        HeaderBlock(
+          title: appContext.centerName,
+          subtitle: 'Panel de direccion',
           metric: 'Curso 2026-2027',
           icon: Icons.apartment,
         ),
@@ -685,7 +797,7 @@ class AdminDashboardView extends StatelessWidget {
           onPressed: () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => const EnrollmentFormScreen(),
+                builder: (_) => EnrollmentFormScreen(appContext: appContext),
               ),
             );
           },
@@ -940,7 +1052,14 @@ class ChildrenScreen extends StatelessWidget {
 }
 
 class DailyReportFormScreen extends StatefulWidget {
-  const DailyReportFormScreen({super.key});
+  const DailyReportFormScreen({
+    super.key,
+    required this.appContext,
+    required this.child,
+  });
+
+  final AppContextData appContext;
+  final ChildSummary child;
 
   @override
   State<DailyReportFormScreen> createState() => _DailyReportFormScreenState();
@@ -968,6 +1087,13 @@ class _DailyReportFormScreenState extends State<DailyReportFormScreen> {
   final _medication = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _centerId.text = widget.appContext.centerId;
+    _childId.text = widget.child.id;
+  }
+
+  @override
   void dispose() {
     _centerId.dispose();
     _childId.dispose();
@@ -983,18 +1109,18 @@ class _DailyReportFormScreenState extends State<DailyReportFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Agenda de Mateo')),
+      appBar: AppBar(title: Text('Agenda de ${widget.child.fullName}')),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
-            const HeaderBlock(
-              title: 'Mateo',
+            HeaderBlock(
+              title: widget.child.fullName,
               subtitle: 'Registro diario',
               metric: 'Martes 15 de septiembre',
               icon: Icons.edit_note_outlined,
             ),
-            if (isSupabaseConfigured)
+            if (isSupabaseConfigured && widget.appContext.isDemo)
               FormSection(
                 title: 'Registro',
                 children: [
@@ -1173,7 +1299,14 @@ class _DailyReportFormScreenState extends State<DailyReportFormScreen> {
 }
 
 class HomeReportFormScreen extends StatefulWidget {
-  const HomeReportFormScreen({super.key});
+  const HomeReportFormScreen({
+    super.key,
+    required this.appContext,
+    required this.child,
+  });
+
+  final AppContextData appContext;
+  final ChildSummary child;
 
   @override
   State<HomeReportFormScreen> createState() => _HomeReportFormScreenState();
@@ -1193,6 +1326,13 @@ class _HomeReportFormScreenState extends State<HomeReportFormScreen> {
   bool _submitting = false;
 
   @override
+  void initState() {
+    super.initState();
+    _centerId.text = widget.appContext.centerId;
+    _childId.text = widget.child.id;
+  }
+
+  @override
   void dispose() {
     _centerId.dispose();
     _childId.dispose();
@@ -1210,13 +1350,13 @@ class _HomeReportFormScreenState extends State<HomeReportFormScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
-            const HeaderBlock(
-              title: 'Mateo',
+            HeaderBlock(
+              title: widget.child.fullName,
               subtitle: 'Antes de llegar',
               metric: 'Informacion para la escuela',
               icon: Icons.home_work_outlined,
             ),
-            if (isSupabaseConfigured)
+            if (isSupabaseConfigured && widget.appContext.isDemo)
               FormSection(
                 title: 'Registro',
                 children: [
@@ -1391,7 +1531,9 @@ class ChoiceLine extends StatelessWidget {
 }
 
 class EnrollmentFormScreen extends StatefulWidget {
-  const EnrollmentFormScreen({super.key});
+  const EnrollmentFormScreen({super.key, required this.appContext});
+
+  final AppContextData appContext;
 
   @override
   State<EnrollmentFormScreen> createState() => _EnrollmentFormScreenState();
@@ -1418,6 +1560,12 @@ class _EnrollmentFormScreenState extends State<EnrollmentFormScreen> {
   final _educatorEmail = TextEditingController();
   String _sex = 'not_specified';
   bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _centerId.text = widget.appContext.centerId;
+  }
 
   @override
   void dispose() {
@@ -1462,22 +1610,39 @@ class _EnrollmentFormScreenState extends State<EnrollmentFormScreen> {
                 icon: Icons.assignment_ind_outlined,
               ),
               const SizedBox(height: 16),
-              FormSection(
-                title: 'Centro',
-                children: [
-                  AppTextField(
-                    controller: _centerId,
-                    label: 'ID del centro',
-                    icon: Icons.apartment_outlined,
-                    validator: requiredField,
-                  ),
-                  AppTextField(
-                    controller: _classroomId,
-                    label: 'ID del aula',
-                    icon: Icons.meeting_room_outlined,
-                  ),
-                ],
-              ),
+              if (widget.appContext.isDemo)
+                FormSection(
+                  title: 'Centro',
+                  children: [
+                    AppTextField(
+                      controller: _centerId,
+                      label: 'ID del centro',
+                      icon: Icons.apartment_outlined,
+                      validator: requiredField,
+                    ),
+                    AppTextField(
+                      controller: _classroomId,
+                      label: 'ID del aula',
+                      icon: Icons.meeting_room_outlined,
+                    ),
+                  ],
+                )
+              else
+                FormSection(
+                  title: 'Centro',
+                  children: [
+                    InfoTile(
+                      title: widget.appContext.centerName,
+                      value: 'Centro seleccionado',
+                      icon: Icons.apartment_outlined,
+                    ),
+                    AppTextField(
+                      controller: _classroomId,
+                      label: 'ID del aula',
+                      icon: Icons.meeting_room_outlined,
+                    ),
+                  ],
+                ),
               FormSection(
                 title: 'Nino',
                 children: [
@@ -2052,4 +2217,23 @@ String sleepToDb(String value) {
 String? emptyToNull(String value) {
   final trimmed = value.trim();
   return trimmed.isEmpty ? null : trimmed;
+}
+
+DailyReportData demoDailyReport(String childId) {
+  return DailyReportData(
+    childId: childId,
+    reportDate: DateTime.now(),
+    breakfast: 'Todo',
+    lunch: 'Bastante',
+    snack: 'Poco',
+    morningBowelMovement: false,
+    afternoonBowelMovement: true,
+    morningSleep: 'Bien',
+    morningSleepTime: '12:50',
+    afternoonSleep: 'Bien',
+    afternoonSleepTime: '14:50',
+    schoolNotes: 'Traer suero fisiologico y cochecito.',
+    homeNotes: 'Ha dormido regular. Esta manana no ha querido leche.',
+    medication: 'Sin medicacion pautada hoy.',
+  );
 }
