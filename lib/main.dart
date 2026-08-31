@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'src/app_repository.dart';
+import 'src/application/admin_content_payloads.dart';
 import 'src/application/daily_report_payloads.dart';
 import 'src/application/enrollment_payload.dart';
 import 'src/domain/nido_domain.dart';
@@ -885,10 +886,6 @@ class EducatorClassView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedChild = appContext.selectedChild;
-    final children = [
-      for (final child in appContext.children)
-        ChildRow(child.fullName, '-', '-', '-', child.classroomName),
-    ];
 
     return Column(
       key: const ValueKey('educator'),
@@ -955,31 +952,77 @@ class EducatorClassView extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 16),
-        DataTable(
-          headingRowHeight: 42,
-          dataRowMinHeight: 48,
-          dataRowMaxHeight: 56,
-          columns: const [
-            DataColumn(label: Text('Niño')),
-            DataColumn(label: Text('Comida')),
-            DataColumn(label: Text('Siesta')),
-            DataColumn(label: Text('Pañal')),
-            DataColumn(label: Text('Nota')),
-          ],
-          rows: [
-            for (final child in children)
-              DataRow(
-                cells: [
-                  DataCell(Text(child.name)),
-                  DataCell(Text(child.food)),
-                  DataCell(Text(child.sleep)),
-                  DataCell(Text(child.diaper)),
-                  DataCell(Text(child.note)),
-                ],
-              ),
-          ],
-        ),
+        EducatorStatusTable(appContext: appContext),
       ],
+    );
+  }
+}
+
+class EducatorStatusTable extends StatelessWidget {
+  const EducatorStatusTable({super.key, required this.appContext});
+
+  final AppContextData appContext;
+
+  @override
+  Widget build(BuildContext context) {
+    final repository = AppRepository(
+      client: isSupabaseConfigured ? Supabase.instance.client : null,
+    );
+
+    return FutureBuilder<List<EducatorChildStatus>>(
+      future: repository.loadEducatorStatuses(appContext),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasError) {
+          return NoteCard(
+            title: 'No se pudo cargar la agenda',
+            text: snapshot.error.toString(),
+          );
+        }
+
+        final rows = snapshot.data ?? const [];
+        if (rows.isEmpty) {
+          return const NoteCard(
+            title: 'Sin alumnos',
+            text: 'Todavia no hay alumnos asignados a esta educadora.',
+          );
+        }
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            headingRowHeight: 42,
+            dataRowMinHeight: 48,
+            dataRowMaxHeight: 56,
+            columns: const [
+              DataColumn(label: Text('Nino')),
+              DataColumn(label: Text('Aula')),
+              DataColumn(label: Text('Comida')),
+              DataColumn(label: Text('Siesta')),
+              DataColumn(label: Text('Panal')),
+              DataColumn(label: Text('Nota')),
+            ],
+            rows: [
+              for (final row in rows)
+                DataRow(
+                  cells: [
+                    DataCell(Text(row.child.fullName)),
+                    DataCell(Text(row.child.classroomName)),
+                    DataCell(Text(row.food)),
+                    DataCell(Text(row.sleep)),
+                    DataCell(Text(row.diaper)),
+                    DataCell(Text(row.note.isEmpty ? '-' : row.note)),
+                  ],
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -1023,6 +1066,11 @@ class AdminDashboardView extends StatelessWidget {
               'Alumnos',
               Icons.child_care_outlined,
               ChildrenScreen(appContext: appContext),
+            ),
+            AppModule(
+              'Educadoras',
+              Icons.badge_outlined,
+              StaffScreen(appContext: appContext),
             ),
             AppModule(
               'Comunicados',
@@ -1221,6 +1269,7 @@ class SimpleModuleScreen extends StatelessWidget {
     required this.icon,
     required this.items,
     this.actionLabel,
+    this.onActionPressed,
   });
 
   final AppContextData? appContext;
@@ -1230,6 +1279,7 @@ class SimpleModuleScreen extends StatelessWidget {
   final IconData icon;
   final List<MetricItem> items;
   final String? actionLabel;
+  final Future<void> Function(BuildContext context)? onActionPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -1246,6 +1296,14 @@ class SimpleModuleScreen extends StatelessWidget {
               icon: icon,
             ),
             const SizedBox(height: 12),
+            if (actionLabel != null && onActionPressed != null) ...[
+              PrimaryActionButton(
+                label: actionLabel!,
+                icon: Icons.add,
+                onPressed: () => onActionPressed!(context),
+              ),
+              const SizedBox(height: 12),
+            ],
             if (appContext == null || kind == null)
               StaticModuleItems(items: items)
             else
@@ -1255,8 +1313,6 @@ class SimpleModuleScreen extends StatelessWidget {
                 icon: icon,
                 fallbackItems: items,
               ),
-            if (actionLabel != null)
-              PrimaryActionButton(label: actionLabel!, icon: Icons.add),
           ],
         ),
       ),
@@ -1293,6 +1349,12 @@ class ModuleItemsList extends StatelessWidget {
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
             child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasError) {
+          return NoteCard(
+            title: 'No se pudo cargar',
+            text: snapshot.error.toString(),
           );
         }
         final rows = snapshot.data ?? const [];
@@ -1347,6 +1409,24 @@ class CalendarScreen extends StatelessWidget {
       subtitle: 'Eventos y festivos',
       icon: Icons.event_outlined,
       actionLabel: 'Nuevo evento',
+      onActionPressed: appContext == null
+          ? null
+          : (screenContext) async {
+              final created = await Navigator.of(screenContext).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => CalendarEventFormScreen(
+                    appContext: appContext!,
+                  ),
+                ),
+              );
+              if (created == true && screenContext.mounted) {
+                Navigator.of(screenContext).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (_) => CalendarScreen(appContext: appContext),
+                  ),
+                );
+              }
+            },
       items: const [
         MetricItem('Viernes', 'Salida mensual', Icons.directions_bus_outlined),
         MetricItem('Lunes', 'Centro cerrado', Icons.event_busy_outlined),
@@ -1479,6 +1559,24 @@ class AnnouncementsScreen extends StatelessWidget {
       subtitle: 'Avisos del centro',
       icon: Icons.campaign_outlined,
       actionLabel: 'Publicar comunicado',
+      onActionPressed: appContext == null
+          ? null
+          : (screenContext) async {
+              final created = await Navigator.of(screenContext).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => AnnouncementFormScreen(
+                    appContext: appContext!,
+                  ),
+                ),
+              );
+              if (created == true && screenContext.mounted) {
+                Navigator.of(screenContext).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (_) => AnnouncementsScreen(appContext: appContext),
+                  ),
+                );
+              }
+            },
       items: const [
         MetricItem('Salida mensual', '52 / 64 leidos', Icons.mark_email_read),
         MetricItem('Recordatorio', 'Traer mochila y agua', Icons.notifications),
@@ -1501,11 +1599,306 @@ class ChildrenScreen extends StatelessWidget {
       subtitle: 'Expedientes y aulas',
       icon: Icons.child_care_outlined,
       actionLabel: 'Nueva alta',
+      onActionPressed: appContext == null
+          ? null
+          : (screenContext) async {
+              await Navigator.of(screenContext).push(
+                MaterialPageRoute(
+                  builder: (_) => EnrollmentFormScreen(
+                    appContext: appContext!,
+                  ),
+                ),
+              );
+            },
       items: const [
         MetricItem('Mateo', 'Clase Mariposas', Icons.child_care),
         MetricItem('Documentos', '4 pendientes', Icons.description_outlined),
       ],
     );
+  }
+}
+
+class StaffScreen extends StatelessWidget {
+  const StaffScreen({super.key, this.appContext});
+
+  final AppContextData? appContext;
+
+  @override
+  Widget build(BuildContext context) {
+    return SimpleModuleScreen(
+      appContext: appContext,
+      kind: ModuleKind.staff,
+      title: 'Educadoras',
+      subtitle: 'Equipo del centro',
+      icon: Icons.badge_outlined,
+      items: const [
+        MetricItem('Laura Marti', 'Educadora', Icons.badge_outlined),
+        MetricItem('Marta Soler', 'Educadora', Icons.badge_outlined),
+      ],
+    );
+  }
+}
+
+class AnnouncementFormScreen extends StatefulWidget {
+  const AnnouncementFormScreen({super.key, required this.appContext});
+
+  final AppContextData appContext;
+
+  @override
+  State<AnnouncementFormScreen> createState() => _AnnouncementFormScreenState();
+}
+
+class _AnnouncementFormScreenState extends State<AnnouncementFormScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _title = TextEditingController();
+  final _body = TextEditingController();
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _body.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Nuevo comunicado')),
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            children: [
+              HeaderBlock(
+                title: 'Nuevo comunicado',
+                subtitle: widget.appContext.centerName,
+                metric: 'Visible para educadoras y familias',
+                icon: Icons.campaign_outlined,
+              ),
+              const SizedBox(height: 16),
+              FormSection(
+                title: 'Contenido',
+                children: [
+                  AppTextField(
+                    controller: _title,
+                    label: 'Titulo',
+                    icon: Icons.title_outlined,
+                    validator: requiredField,
+                  ),
+                  AppTextField(
+                    controller: _body,
+                    label: 'Mensaje',
+                    icon: Icons.notes_outlined,
+                    maxLines: 5,
+                    validator: requiredField,
+                  ),
+                ],
+              ),
+              SizedBox(
+                height: 52,
+                child: FilledButton.icon(
+                  onPressed: _submitting ? null : _submit,
+                  icon: _submitting
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.publish_outlined),
+                  label: Text(
+                    _submitting ? 'Publicando' : 'Publicar comunicado',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _submitting = true);
+    final repository = AppRepository(
+      client: isSupabaseConfigured ? Supabase.instance.client : null,
+    );
+    final payload = AdminContentPayloadBuilder.fromAnnouncement(
+      AnnouncementDraft(
+        centerId: widget.appContext.centerId,
+        title: _title.text,
+        body: _body.text,
+        authorId: isSupabaseConfigured
+            ? Supabase.instance.client.auth.currentUser?.id
+            : null,
+      ),
+    );
+
+    try {
+      if (isSupabaseConfigured && !widget.appContext.isDemo) {
+        await repository.publishAnnouncement(payload);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Comunicado publicado')),
+      );
+      Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+}
+
+class CalendarEventFormScreen extends StatefulWidget {
+  const CalendarEventFormScreen({super.key, required this.appContext});
+
+  final AppContextData appContext;
+
+  @override
+  State<CalendarEventFormScreen> createState() =>
+      _CalendarEventFormScreenState();
+}
+
+class _CalendarEventFormScreenState extends State<CalendarEventFormScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _title = TextEditingController();
+  final _startsOn = TextEditingController(
+    text: DateTime.now()
+        .add(const Duration(days: 7))
+        .toIso8601String()
+        .substring(0, 10),
+  );
+  final _endsOn = TextEditingController();
+  bool _isClosedDay = false;
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _startsOn.dispose();
+    _endsOn.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Nuevo evento')),
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            children: [
+              HeaderBlock(
+                title: 'Nuevo evento',
+                subtitle: widget.appContext.centerName,
+                metric: 'Calendario del centro',
+                icon: Icons.event_outlined,
+              ),
+              const SizedBox(height: 16),
+              FormSection(
+                title: 'Evento',
+                children: [
+                  AppTextField(
+                    controller: _title,
+                    label: 'Titulo',
+                    icon: Icons.title_outlined,
+                    validator: requiredField,
+                  ),
+                  AppTextField(
+                    controller: _startsOn,
+                    label: 'Fecha de inicio',
+                    icon: Icons.event_outlined,
+                    hint: 'AAAA-MM-DD',
+                    validator: dateField,
+                  ),
+                  AppTextField(
+                    controller: _endsOn,
+                    label: 'Fecha de fin',
+                    icon: Icons.event_available_outlined,
+                    hint: 'Opcional',
+                    validator: _optionalDateField,
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Centro cerrado'),
+                    value: _isClosedDay,
+                    onChanged: (value) {
+                      setState(() => _isClosedDay = value);
+                    },
+                  ),
+                ],
+              ),
+              SizedBox(
+                height: 52,
+                child: FilledButton.icon(
+                  onPressed: _submitting ? null : _submit,
+                  icon: _submitting
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.event_available_outlined),
+                  label: Text(_submitting ? 'Creando' : 'Crear evento'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String? _optionalDateField(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) return null;
+    return dateField(trimmed);
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _submitting = true);
+    final repository = AppRepository(
+      client: isSupabaseConfigured ? Supabase.instance.client : null,
+    );
+    final payload = AdminContentPayloadBuilder.fromCalendarEvent(
+      CalendarEventDraft(
+        centerId: widget.appContext.centerId,
+        title: _title.text,
+        startsOn: _startsOn.text,
+        endsOn: _endsOn.text,
+        isClosedDay: _isClosedDay,
+      ),
+    );
+
+    try {
+      if (isSupabaseConfigured && !widget.appContext.isDemo) {
+        await repository.createCalendarEvent(payload);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Evento creado')),
+      );
+      Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 }
 
@@ -2595,7 +2988,7 @@ class PrimaryActionButton extends StatelessWidget {
       width: double.infinity,
       height: 52,
       child: FilledButton.icon(
-        onPressed: onPressed ?? () {},
+        onPressed: onPressed,
         icon: Icon(icon),
         label: Text(label),
         style: FilledButton.styleFrom(

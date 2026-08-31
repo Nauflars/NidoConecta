@@ -199,6 +199,53 @@ class AppRepository {
     ];
   }
 
+  Future<List<StaffMemberData>> loadStaffMembers(String centerId) async {
+    final client = _client;
+    if (client == null) {
+      return const [
+        StaffMemberData(
+          fullName: 'Laura Marti',
+          role: 'Educadora',
+          phone: null,
+        ),
+        StaffMemberData(
+          fullName: 'Marta Soler',
+          role: 'Educadora',
+          phone: null,
+        ),
+      ];
+    }
+
+    final rows = await client
+        .from('center_memberships')
+        .select('role, profiles(full_name, phone)')
+        .eq('center_id', centerId)
+        .order('role');
+
+    return rows
+        .where((row) => row['role'] == 'educator' || row['role'] == 'admin')
+        .map<StaffMemberData>((row) {
+      final profile = row['profiles'] as Map<String, dynamic>?;
+      return StaffMemberData(
+        fullName: profile?['full_name'] as String? ?? 'Usuario sin perfil',
+        role: row['role'] == 'admin' ? 'Direccion' : 'Educadora',
+        phone: profile?['phone'] as String?,
+      );
+    }).toList();
+  }
+
+  Future<void> publishAnnouncement(Map<String, dynamic> payload) async {
+    final client = _client;
+    if (client == null) return;
+    await client.from('announcements').insert(payload);
+  }
+
+  Future<void> createCalendarEvent(Map<String, dynamic> payload) async {
+    final client = _client;
+    if (client == null) return;
+    await client.from('calendar_events').insert(payload);
+  }
+
   Future<List<MetricItemData>> loadModuleItems(
     String centerId,
     ModuleKind kind,
@@ -215,6 +262,7 @@ class AppRepository {
       ModuleKind.attendance => _loadAttendanceItems(client, centerId),
       ModuleKind.announcements => _loadAnnouncementItems(client, centerId),
       ModuleKind.pickups => _loadPickupItems(client, centerId),
+      ModuleKind.staff => _loadStaffItems(client, centerId),
     };
   }
 
@@ -365,6 +413,19 @@ class AppRepository {
         .map<MetricItemData>((row) => MetricItemData(
               row['full_name'] as String,
               row['relationship'] as String,
+            ))
+        .toList();
+  }
+
+  Future<List<MetricItemData>> _loadStaffItems(
+    SupabaseClient client,
+    String centerId,
+  ) async {
+    final staff = await loadStaffMembers(centerId);
+    return staff
+        .map((member) => MetricItemData(
+              member.fullName,
+              [member.role, member.phone].whereType<String>().join(' - '),
             ))
         .toList();
   }

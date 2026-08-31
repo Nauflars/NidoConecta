@@ -102,6 +102,18 @@ class EducatorChildStatus {
   final String note;
 }
 
+class StaffMemberData {
+  const StaffMemberData({
+    required this.fullName,
+    required this.role,
+    required this.phone,
+  });
+
+  final String fullName;
+  final String role;
+  final String? phone;
+}
+
 enum ModuleKind {
   calendar,
   menu,
@@ -111,6 +123,7 @@ enum ModuleKind {
   attendance,
   announcements,
   children,
+  staff,
 }
 
 class MetricItemData {
@@ -198,12 +211,18 @@ String? optionalEmailField(String? value) {
 }
 
 String? birthDateField(String? value) {
+  final dateError = dateField(value);
+  if (dateError != null) return dateError;
+  final parsed = DateTime.parse(value!.trim());
+  if (parsed.isAfter(DateTime.now())) return 'Fecha futura no valida';
+  return null;
+}
+
+String? dateField(String? value) {
   final required = requiredField(value);
   if (required != null) return required;
   final parsed = DateTime.tryParse(value!.trim());
-  if (parsed == null) return 'Usa formato AAAA-MM-DD';
-  if (parsed.isAfter(DateTime.now())) return 'Fecha futura no valida';
-  return null;
+  return parsed == null ? 'Usa formato AAAA-MM-DD' : null;
 }
 
 DailyReportData demoDailyReport(String childId) {

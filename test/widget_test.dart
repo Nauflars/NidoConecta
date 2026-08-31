@@ -36,6 +36,65 @@ void main() {
     expect(find.text('Email padre o tutor'), findsOneWidget);
   });
 
+  testWidgets('opens and submits announcement form from admin view',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await pumpApp(tester);
+
+    await tester.tap(find.byIcon(Icons.dashboard_outlined));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Comunicados'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Comunicados'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Publicar comunicado'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nuevo comunicado'), findsWidgets);
+    await tester.enterText(find.byType(TextFormField).at(0), 'Reunion');
+    await tester.enterText(
+      find.byType(TextFormField).at(1),
+      'La reunion sera el proximo viernes.',
+    );
+    await tester.tap(find.text('Publicar comunicado').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Comunicado publicado'), findsOneWidget);
+  });
+
+  testWidgets('opens and submits calendar event form from admin view',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await pumpApp(tester);
+
+    await tester.tap(find.byIcon(Icons.dashboard_outlined));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Calendario'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Calendario'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Nuevo evento'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nuevo evento'), findsWidgets);
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'Puertas abiertas',
+    );
+    await tester.tap(find.text('Crear evento'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Evento creado'), findsOneWidget);
+  });
+
   testWidgets('opens home report form from family view', (tester) async {
     await pumpApp(tester);
 
