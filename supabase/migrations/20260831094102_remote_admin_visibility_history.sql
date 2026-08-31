@@ -1,0 +1,5 @@
+-- Reconciles the Supabase migration history after the admin visibility
+-- policies were applied directly to the remote project during verification.
+-- The concrete, idempotent policy definitions live in:
+-- - 202608310004_admin_membership_visibility.sql
+-- - 202608310005_admin_staff_profile_visibility.sql
