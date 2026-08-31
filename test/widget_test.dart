@@ -17,7 +17,7 @@ void main() {
     await tester.tap(find.text('Educadora'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Clase Mariposas'), findsOneWidget);
+    expect(find.text('Clase Mariposas'), findsWidgets);
     expect(find.byIcon(Icons.qr_code_scanner), findsWidgets);
   });
 

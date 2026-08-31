@@ -68,6 +68,58 @@ class DailyReportData {
   final String? medication;
 }
 
+class AdminDashboardData {
+  const AdminDashboardData({
+    required this.childrenCount,
+    required this.educatorsCount,
+    required this.todayReportsCount,
+    required this.todayAttendanceCount,
+    required this.messagesCount,
+    required this.mediaCount,
+  });
+
+  final int childrenCount;
+  final int educatorsCount;
+  final int todayReportsCount;
+  final int todayAttendanceCount;
+  final int messagesCount;
+  final int mediaCount;
+}
+
+class EducatorChildStatus {
+  const EducatorChildStatus({
+    required this.child,
+    required this.food,
+    required this.sleep,
+    required this.diaper,
+    required this.note,
+  });
+
+  final ChildSummary child;
+  final String food;
+  final String sleep;
+  final String diaper;
+  final String note;
+}
+
+enum ModuleKind {
+  calendar,
+  menu,
+  messages,
+  media,
+  pickups,
+  attendance,
+  announcements,
+  children,
+}
+
+class MetricItemData {
+  const MetricItemData(this.title, this.value);
+
+  final String title;
+  final String value;
+}
+
 NidoRole roleFromDb(String? value) {
   return switch (value) {
     'admin' => NidoRole.admin,

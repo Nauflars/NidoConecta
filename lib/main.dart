@@ -521,24 +521,34 @@ class FamilyTodayView extends StatelessWidget {
                 PrimaryActionButton(
                   label: 'Enviar mensaje',
                   icon: Icons.chat_bubble_outline,
-                  onPressed: () => openModule(context, const MessagesScreen()),
+                  onPressed: () => openModule(
+                    context,
+                    MessagesScreen(appContext: appContext),
+                  ),
                 ),
                 const SizedBox(height: 16),
-                const ModuleGrid(
+                ModuleGrid(
+                  appContext: appContext,
                   modules: [
                     AppModule(
                       'Calendario',
                       Icons.event_outlined,
-                      CalendarScreen(),
+                      CalendarScreen(appContext: appContext),
                     ),
                     AppModule(
-                        'Menu', Icons.restaurant_menu_outlined, MenuScreen()),
+                      'Menu',
+                      Icons.restaurant_menu_outlined,
+                      MenuScreen(appContext: appContext),
+                    ),
                     AppModule(
-                        'Fotos', Icons.photo_library_outlined, MediaScreen()),
+                      'Fotos',
+                      Icons.photo_library_outlined,
+                      MediaScreen(appContext: appContext),
+                    ),
                     AppModule(
                       'Autorizados',
                       Icons.verified_user_outlined,
-                      AuthorizedPickupsScreen(),
+                      AuthorizedPickupsScreen(appContext: appContext),
                     ),
                   ],
                 ),
@@ -875,17 +885,10 @@ class EducatorClassView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedChild = appContext.selectedChild;
-    final children = appContext.isDemo
-        ? const [
-            ChildRow('Mateo', 'Todo', '1h 22min', '3', ''),
-            ChildRow('Lucas', 'Bastante', 'Activa', '2', 'Nota'),
-            ChildRow('Ana', 'Todo', '50min', '-', ''),
-            ChildRow('Leo', 'Poco', '1h 05min', '2', 'Revisar'),
-          ]
-        : [
-            for (final child in appContext.children)
-              ChildRow(child.fullName, '-', '-', '-', child.classroomName),
-          ];
+    final children = [
+      for (final child in appContext.children)
+        ChildRow(child.fullName, '-', '-', '-', child.classroomName),
+    ];
 
     return Column(
       key: const ValueKey('educator'),
@@ -926,12 +929,29 @@ class EducatorClassView extends StatelessWidget {
           },
         ),
         const SizedBox(height: 12),
-        const ModuleGrid(
+        ModuleGrid(
+          appContext: appContext,
           modules: [
-            AppModule('Asistencia', Icons.qr_code_scanner, AttendanceScreen()),
-            AppModule('Mensajes', Icons.forum_outlined, MessagesScreen()),
-            AppModule('Fotos', Icons.add_a_photo_outlined, MediaScreen()),
-            AppModule('Calendario', Icons.event_outlined, CalendarScreen()),
+            AppModule(
+              'Asistencia',
+              Icons.qr_code_scanner,
+              AttendanceScreen(appContext: appContext),
+            ),
+            AppModule(
+              'Mensajes',
+              Icons.forum_outlined,
+              MessagesScreen(appContext: appContext),
+            ),
+            AppModule(
+              'Fotos',
+              Icons.add_a_photo_outlined,
+              MediaScreen(appContext: appContext),
+            ),
+            AppModule(
+              'Calendario',
+              Icons.event_outlined,
+              CalendarScreen(appContext: appContext),
+            ),
           ],
         ),
         const SizedBox(height: 16),
@@ -971,15 +991,6 @@ class AdminDashboardView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const items = [
-      MetricItem('Presentes', '57 / 64', Icons.how_to_reg_outlined),
-      MetricItem('Educadoras', '8', Icons.badge_outlined),
-      MetricItem('Comedor', '46', Icons.restaurant_menu_outlined),
-      MetricItem('Incidencias', '3', Icons.warning_amber_outlined),
-      MetricItem('Mensajes', '7', Icons.mark_unread_chat_alt_outlined),
-      MetricItem('Fotos', '42', Icons.collections_outlined),
-    ];
-
     return Column(
       key: const ValueKey('admin'),
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -991,10 +1002,109 @@ class AdminDashboardView extends StatelessWidget {
           icon: Icons.apartment,
         ),
         const SizedBox(height: 12),
-        LayoutBuilder(
+        AdminMetricsGrid(appContext: appContext),
+        const SizedBox(height: 16),
+        PrimaryActionButton(
+          label: 'Nueva alta',
+          icon: Icons.person_add_alt_1_outlined,
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => EnrollmentFormScreen(appContext: appContext),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        ModuleGrid(
+          appContext: appContext,
+          modules: [
+            AppModule(
+              'Alumnos',
+              Icons.child_care_outlined,
+              ChildrenScreen(appContext: appContext),
+            ),
+            AppModule(
+              'Comunicados',
+              Icons.campaign_outlined,
+              AnnouncementsScreen(appContext: appContext),
+            ),
+            AppModule(
+              'Calendario',
+              Icons.event_outlined,
+              CalendarScreen(appContext: appContext),
+            ),
+            AppModule(
+              'Menu',
+              Icons.restaurant_menu_outlined,
+              MenuScreen(appContext: appContext),
+            ),
+            AppModule(
+              'Fotos',
+              Icons.collections_outlined,
+              MediaScreen(appContext: appContext),
+            ),
+            AppModule(
+              'Mensajes',
+              Icons.forum_outlined,
+              MessagesScreen(appContext: appContext),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class AdminMetricsGrid extends StatelessWidget {
+  const AdminMetricsGrid({super.key, required this.appContext});
+
+  final AppContextData appContext;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<AdminDashboardData>(
+      future: AppRepository(
+        client: isSupabaseConfigured ? Supabase.instance.client : null,
+      ).loadAdminDashboard(appContext.centerId),
+      builder: (context, snapshot) {
+        final data = snapshot.data;
+        final items = [
+          MetricItem(
+            'NiÃ±os',
+            data == null ? '...' : '${data.childrenCount}',
+            Icons.child_care_outlined,
+          ),
+          MetricItem(
+            'Educadoras',
+            data == null ? '...' : '${data.educatorsCount}',
+            Icons.badge_outlined,
+          ),
+          MetricItem(
+            'Agendas hoy',
+            data == null ? '...' : '${data.todayReportsCount}',
+            Icons.edit_note_outlined,
+          ),
+          MetricItem(
+            'Entradas QR',
+            data == null ? '...' : '${data.todayAttendanceCount}',
+            Icons.qr_code_scanner,
+          ),
+          MetricItem(
+            'Mensajes',
+            data == null ? '...' : '${data.messagesCount}',
+            Icons.mark_unread_chat_alt_outlined,
+          ),
+          MetricItem(
+            'Fotos',
+            data == null ? '...' : '${data.mediaCount}',
+            Icons.collections_outlined,
+          ),
+        ];
+
+        return LayoutBuilder(
           builder: (context, constraints) {
             final columns = constraints.maxWidth > 740 ? 3 : 2;
-
             return GridView.count(
               crossAxisCount: columns,
               crossAxisSpacing: 10,
@@ -1012,32 +1122,8 @@ class AdminDashboardView extends StatelessWidget {
               ],
             );
           },
-        ),
-        const SizedBox(height: 16),
-        PrimaryActionButton(
-          label: 'Nueva alta',
-          icon: Icons.person_add_alt_1_outlined,
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => EnrollmentFormScreen(appContext: appContext),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        const ModuleGrid(
-          modules: [
-            AppModule('Alumnos', Icons.child_care_outlined, ChildrenScreen()),
-            AppModule(
-                'Comunicados', Icons.campaign_outlined, AnnouncementsScreen()),
-            AppModule('Calendario', Icons.event_outlined, CalendarScreen()),
-            AppModule('Menu', Icons.restaurant_menu_outlined, MenuScreen()),
-            AppModule('Fotos', Icons.collections_outlined, MediaScreen()),
-            AppModule('Mensajes', Icons.forum_outlined, MessagesScreen()),
-          ],
-        ),
-      ],
+        );
+      },
     );
   }
 }
@@ -1055,8 +1141,10 @@ class AppModule {
 }
 
 class ModuleGrid extends StatelessWidget {
-  const ModuleGrid({super.key, required this.modules});
+  const ModuleGrid(
+      {super.key, required this.appContext, required this.modules});
 
+  final AppContextData appContext;
   final List<AppModule> modules;
 
   @override
@@ -1126,6 +1214,8 @@ class ModuleGrid extends StatelessWidget {
 class SimpleModuleScreen extends StatelessWidget {
   const SimpleModuleScreen({
     super.key,
+    this.appContext,
+    this.kind,
     required this.title,
     required this.subtitle,
     required this.icon,
@@ -1133,6 +1223,8 @@ class SimpleModuleScreen extends StatelessWidget {
     this.actionLabel,
   });
 
+  final AppContextData? appContext;
+  final ModuleKind? kind;
   final String title;
   final String subtitle;
   final IconData icon;
@@ -1154,10 +1246,15 @@ class SimpleModuleScreen extends StatelessWidget {
               icon: icon,
             ),
             const SizedBox(height: 12),
-            for (final item in items) ...[
-              InfoTile(title: item.title, value: item.value, icon: item.icon),
-              const SizedBox(height: 10),
-            ],
+            if (appContext == null || kind == null)
+              StaticModuleItems(items: items)
+            else
+              ModuleItemsList(
+                appContext: appContext!,
+                kind: kind!,
+                icon: icon,
+                fallbackItems: items,
+              ),
             if (actionLabel != null)
               PrimaryActionButton(label: actionLabel!, icon: Icons.add),
           ],
@@ -1167,17 +1264,90 @@ class SimpleModuleScreen extends StatelessWidget {
   }
 }
 
-class CalendarScreen extends StatelessWidget {
-  const CalendarScreen({super.key});
+class ModuleItemsList extends StatelessWidget {
+  const ModuleItemsList({
+    super.key,
+    required this.appContext,
+    required this.kind,
+    required this.icon,
+    required this.fallbackItems,
+  });
+
+  final AppContextData appContext;
+  final ModuleKind kind;
+  final IconData icon;
+  final List<MetricItem> fallbackItems;
 
   @override
   Widget build(BuildContext context) {
-    return const SimpleModuleScreen(
+    if (appContext.isDemo || !isSupabaseConfigured) {
+      return StaticModuleItems(items: fallbackItems);
+    }
+
+    return FutureBuilder<List<MetricItemData>>(
+      future: AppRepository(
+        client: Supabase.instance.client,
+      ).loadModuleItems(appContext.centerId, kind),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final rows = snapshot.data ?? const [];
+        if (rows.isEmpty) {
+          return const NoteCard(
+            title: 'Sin datos',
+            text: 'Todavia no hay registros reales en este modulo.',
+          );
+        }
+        return Column(
+          children: [
+            for (final row in rows) ...[
+              InfoTile(title: row.title, value: row.value, icon: icon),
+              const SizedBox(height: 10),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class StaticModuleItems extends StatelessWidget {
+  const StaticModuleItems({super.key, required this.items});
+
+  final List<MetricItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (final item in items) ...[
+          InfoTile(title: item.title, value: item.value, icon: item.icon),
+          const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+}
+
+class CalendarScreen extends StatelessWidget {
+  const CalendarScreen({super.key, this.appContext});
+
+  final AppContextData? appContext;
+
+  @override
+  Widget build(BuildContext context) {
+    return SimpleModuleScreen(
+      appContext: appContext,
+      kind: ModuleKind.calendar,
       title: 'Calendario',
       subtitle: 'Eventos y festivos',
       icon: Icons.event_outlined,
       actionLabel: 'Nuevo evento',
-      items: [
+      items: const [
         MetricItem('Viernes', 'Salida mensual', Icons.directions_bus_outlined),
         MetricItem('Lunes', 'Centro cerrado', Icons.event_busy_outlined),
       ],
@@ -1186,16 +1356,20 @@ class CalendarScreen extends StatelessWidget {
 }
 
 class MenuScreen extends StatelessWidget {
-  const MenuScreen({super.key});
+  const MenuScreen({super.key, this.appContext});
+
+  final AppContextData? appContext;
 
   @override
   Widget build(BuildContext context) {
-    return const SimpleModuleScreen(
+    return SimpleModuleScreen(
+      appContext: appContext,
+      kind: ModuleKind.menu,
       title: 'Menu',
       subtitle: 'Comedor mensual',
       icon: Icons.restaurant_menu_outlined,
       actionLabel: 'Importar menu',
-      items: [
+      items: const [
         MetricItem('Hoy', 'Macarrones · merluza · fruta', Icons.restaurant),
         MetricItem('Alergias', '2 dietas especiales', Icons.health_and_safety),
       ],
@@ -1204,16 +1378,20 @@ class MenuScreen extends StatelessWidget {
 }
 
 class MessagesScreen extends StatelessWidget {
-  const MessagesScreen({super.key});
+  const MessagesScreen({super.key, this.appContext});
+
+  final AppContextData? appContext;
 
   @override
   Widget build(BuildContext context) {
-    return const SimpleModuleScreen(
+    return SimpleModuleScreen(
+      appContext: appContext,
+      kind: ModuleKind.messages,
       title: 'Mensajes',
       subtitle: 'Conversaciones por categoria',
       icon: Icons.forum_outlined,
       actionLabel: 'Nuevo mensaje',
-      items: [
+      items: const [
         MetricItem('Salud', 'Mateo llega a las 10:00', Icons.healing_outlined),
         MetricItem('Comedor', 'Cambio eventual viernes', Icons.restaurant),
       ],
@@ -1222,16 +1400,20 @@ class MessagesScreen extends StatelessWidget {
 }
 
 class MediaScreen extends StatelessWidget {
-  const MediaScreen({super.key});
+  const MediaScreen({super.key, this.appContext});
+
+  final AppContextData? appContext;
 
   @override
   Widget build(BuildContext context) {
-    return const SimpleModuleScreen(
+    return SimpleModuleScreen(
+      appContext: appContext,
+      kind: ModuleKind.media,
       title: 'Fotos',
       subtitle: 'Momentos autorizados',
       icon: Icons.photo_library_outlined,
       actionLabel: 'Subir fotos',
-      items: [
+      items: const [
         MetricItem('Pintura', '4 fotos nuevas', Icons.palette_outlined),
         MetricItem('Musica', '2 videos', Icons.music_note_outlined),
       ],
@@ -1240,16 +1422,20 @@ class MediaScreen extends StatelessWidget {
 }
 
 class AuthorizedPickupsScreen extends StatelessWidget {
-  const AuthorizedPickupsScreen({super.key});
+  const AuthorizedPickupsScreen({super.key, this.appContext});
+
+  final AppContextData? appContext;
 
   @override
   Widget build(BuildContext context) {
-    return const SimpleModuleScreen(
+    return SimpleModuleScreen(
+      appContext: appContext,
+      kind: ModuleKind.pickups,
       title: 'Autorizados',
       subtitle: 'Recogidas del nino',
       icon: Icons.verified_user_outlined,
       actionLabel: 'Nueva autorizacion',
-      items: [
+      items: const [
         MetricItem('Carlos', 'Padre · autorizado', Icons.person_outline),
         MetricItem('Maria', 'Abuela · solo hoy', Icons.today_outlined),
       ],
@@ -1258,16 +1444,20 @@ class AuthorizedPickupsScreen extends StatelessWidget {
 }
 
 class AttendanceScreen extends StatelessWidget {
-  const AttendanceScreen({super.key});
+  const AttendanceScreen({super.key, this.appContext});
+
+  final AppContextData? appContext;
 
   @override
   Widget build(BuildContext context) {
-    return const SimpleModuleScreen(
+    return SimpleModuleScreen(
+      appContext: appContext,
+      kind: ModuleKind.attendance,
       title: 'Asistencia',
       subtitle: 'Entrada y salida QR',
       icon: Icons.qr_code_scanner,
       actionLabel: 'Escanear QR',
-      items: [
+      items: const [
         MetricItem('Mateo', 'Entrada 08:37', Icons.login_outlined),
         MetricItem('Clase Mariposas', '11 / 13 presentes', Icons.groups),
       ],
@@ -1276,16 +1466,20 @@ class AttendanceScreen extends StatelessWidget {
 }
 
 class AnnouncementsScreen extends StatelessWidget {
-  const AnnouncementsScreen({super.key});
+  const AnnouncementsScreen({super.key, this.appContext});
+
+  final AppContextData? appContext;
 
   @override
   Widget build(BuildContext context) {
-    return const SimpleModuleScreen(
+    return SimpleModuleScreen(
+      appContext: appContext,
+      kind: ModuleKind.announcements,
       title: 'Comunicados',
       subtitle: 'Avisos del centro',
       icon: Icons.campaign_outlined,
       actionLabel: 'Publicar comunicado',
-      items: [
+      items: const [
         MetricItem('Salida mensual', '52 / 64 leidos', Icons.mark_email_read),
         MetricItem('Recordatorio', 'Traer mochila y agua', Icons.notifications),
       ],
@@ -1294,16 +1488,20 @@ class AnnouncementsScreen extends StatelessWidget {
 }
 
 class ChildrenScreen extends StatelessWidget {
-  const ChildrenScreen({super.key});
+  const ChildrenScreen({super.key, this.appContext});
+
+  final AppContextData? appContext;
 
   @override
   Widget build(BuildContext context) {
-    return const SimpleModuleScreen(
+    return SimpleModuleScreen(
+      appContext: appContext,
+      kind: ModuleKind.children,
       title: 'Alumnos',
       subtitle: 'Expedientes y aulas',
       icon: Icons.child_care_outlined,
       actionLabel: 'Nueva alta',
-      items: [
+      items: const [
         MetricItem('Mateo', 'Clase Mariposas', Icons.child_care),
         MetricItem('Documentos', '4 pendientes', Icons.description_outlined),
       ],

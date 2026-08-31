@@ -114,4 +114,278 @@ class AppRepository {
       medication: row['medication'] as String?,
     );
   }
+
+  Future<AdminDashboardData> loadAdminDashboard(String centerId) async {
+    final client = _client;
+    if (client == null) {
+      return const AdminDashboardData(
+        childrenCount: 1,
+        educatorsCount: 1,
+        todayReportsCount: 1,
+        todayAttendanceCount: 1,
+        messagesCount: 2,
+        mediaCount: 4,
+      );
+    }
+
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final results = await Future.wait<int>([
+      _count(client.from('children').select('id'), centerId: centerId),
+      _count(
+        client.from('center_memberships').select('user_id'),
+        centerId: centerId,
+        role: 'educator',
+      ),
+      _count(
+        client.from('daily_reports').select('id'),
+        centerId: centerId,
+        reportDate: today,
+      ),
+      _count(
+        client.from('attendance_events').select('id'),
+        centerId: centerId,
+        todayColumn: 'occurred_at',
+      ),
+      _count(client.from('messages').select('id'), centerId: centerId),
+      _count(client.from('media_assets').select('id'), centerId: centerId),
+    ]);
+
+    return AdminDashboardData(
+      childrenCount: results[0],
+      educatorsCount: results[1],
+      todayReportsCount: results[2],
+      todayAttendanceCount: results[3],
+      messagesCount: results[4],
+      mediaCount: results[5],
+    );
+  }
+
+  Future<List<EducatorChildStatus>> loadEducatorStatuses(
+    AppContextData context,
+  ) async {
+    final client = _client;
+    if (client == null) {
+      return [
+        for (final child in context.children)
+          EducatorChildStatus(
+            child: child,
+            food: 'Bastante',
+            sleep: '12:45-14:15',
+            diaper: '1',
+            note: 'Demo',
+          ),
+      ];
+    }
+
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final reports = await client
+        .from('daily_reports')
+        .select('child_id, lunch, afternoon_sleep_time, school_notes')
+        .eq('center_id', context.centerId)
+        .eq('report_date', today);
+    final byChild = {
+      for (final row in reports) row['child_id'] as String: row,
+    };
+
+    return [
+      for (final child in context.children)
+        EducatorChildStatus(
+          child: child,
+          food: mealFromDb(byChild[child.id]?['lunch'] as String?),
+          sleep: byChild[child.id]?['afternoon_sleep_time'] as String? ?? '-',
+          diaper: '-',
+          note: byChild[child.id]?['school_notes'] as String? ?? '',
+        ),
+    ];
+  }
+
+  Future<List<MetricItemData>> loadModuleItems(
+    String centerId,
+    ModuleKind kind,
+  ) async {
+    final client = _client;
+    if (client == null) return const [];
+
+    return switch (kind) {
+      ModuleKind.calendar => _loadCalendarItems(client, centerId),
+      ModuleKind.menu => _loadMenuItems(client, centerId),
+      ModuleKind.messages => _loadMessageItems(client, centerId),
+      ModuleKind.media => _loadMediaItems(client, centerId),
+      ModuleKind.children => _loadChildrenItems(client, centerId),
+      ModuleKind.attendance => _loadAttendanceItems(client, centerId),
+      ModuleKind.announcements => _loadAnnouncementItems(client, centerId),
+      ModuleKind.pickups => _loadPickupItems(client, centerId),
+    };
+  }
+
+  Future<List<MetricItemData>> _loadCalendarItems(
+    SupabaseClient client,
+    String centerId,
+  ) async {
+    final rows = await client
+        .from('calendar_events')
+        .select('title, starts_on, is_closed_day')
+        .eq('center_id', centerId)
+        .order('starts_on')
+        .limit(12);
+    return rows
+        .map<MetricItemData>((row) => MetricItemData(
+              row['title'] as String,
+              '${row['starts_on']}${row['is_closed_day'] == true ? ' - cerrado' : ''}',
+            ))
+        .toList();
+  }
+
+  Future<List<MetricItemData>> _loadMenuItems(
+    SupabaseClient client,
+    String centerId,
+  ) async {
+    final rows = await client
+        .from('menus')
+        .select('menu_date, first_course, second_course, dessert')
+        .eq('center_id', centerId)
+        .order('menu_date')
+        .limit(10);
+    return rows
+        .map<MetricItemData>((row) => MetricItemData(
+              row['menu_date'] as String,
+              [
+                row['first_course'],
+                row['second_course'],
+                row['dessert'],
+              ].whereType<String>().join(' - '),
+            ))
+        .toList();
+  }
+
+  Future<List<MetricItemData>> _loadMessageItems(
+    SupabaseClient client,
+    String centerId,
+  ) async {
+    final rows = await client
+        .from('messages')
+        .select('category, body')
+        .eq('center_id', centerId)
+        .order('created_at')
+        .limit(10);
+    return rows
+        .map<MetricItemData>((row) => MetricItemData(
+              row['category'] as String? ?? 'Mensaje',
+              row['body'] as String? ?? '',
+            ))
+        .toList();
+  }
+
+  Future<List<MetricItemData>> _loadMediaItems(
+    SupabaseClient client,
+    String centerId,
+  ) async {
+    final rows = await client
+        .from('media_assets')
+        .select('title, activity, taken_on')
+        .eq('center_id', centerId)
+        .order('taken_on')
+        .limit(10);
+    return rows
+        .map<MetricItemData>((row) => MetricItemData(
+              row['title'] as String? ?? 'Archivo',
+              '${row['activity'] ?? 'Actividad'} - ${row['taken_on'] ?? ''}',
+            ))
+        .toList();
+  }
+
+  Future<List<MetricItemData>> _loadChildrenItems(
+    SupabaseClient client,
+    String centerId,
+  ) async {
+    final rows = await client
+        .from('children')
+        .select('full_name, classrooms(name)')
+        .eq('center_id', centerId)
+        .order('full_name')
+        .limit(30);
+    return rows.map<MetricItemData>((row) {
+      final classroom = row['classrooms'] as Map<String, dynamic>?;
+      return MetricItemData(
+        row['full_name'] as String,
+        classroom?['name'] as String? ?? 'Sin aula',
+      );
+    }).toList();
+  }
+
+  Future<List<MetricItemData>> _loadAttendanceItems(
+    SupabaseClient client,
+    String centerId,
+  ) async {
+    final rows = await client
+        .from('attendance_events')
+        .select('event_type, occurred_at, children(full_name)')
+        .eq('center_id', centerId)
+        .order('occurred_at')
+        .limit(10);
+    return rows.map<MetricItemData>((row) {
+      final child = row['children'] as Map<String, dynamic>?;
+      return MetricItemData(
+        child?['full_name'] as String? ?? 'Alumno',
+        '${row['event_type']} - ${row['occurred_at']}',
+      );
+    }).toList();
+  }
+
+  Future<List<MetricItemData>> _loadAnnouncementItems(
+    SupabaseClient client,
+    String centerId,
+  ) async {
+    final rows = await client
+        .from('announcements')
+        .select('title, body')
+        .eq('center_id', centerId)
+        .order('created_at')
+        .limit(10);
+    return rows
+        .map<MetricItemData>((row) => MetricItemData(
+              row['title'] as String,
+              row['body'] as String,
+            ))
+        .toList();
+  }
+
+  Future<List<MetricItemData>> _loadPickupItems(
+    SupabaseClient client,
+    String centerId,
+  ) async {
+    final children = await _loadCenterChildren(client, centerId);
+    if (children.isEmpty) return const [];
+    final rows = await client
+        .from('authorized_pickups')
+        .select('full_name, relationship')
+        .eq('child_id', children.first.id)
+        .limit(10);
+    return rows
+        .map<MetricItemData>((row) => MetricItemData(
+              row['full_name'] as String,
+              row['relationship'] as String,
+            ))
+        .toList();
+  }
+
+  Future<int> _count(
+    PostgrestFilterBuilder<List<Map<String, dynamic>>> query, {
+    required String centerId,
+    String? role,
+    String? reportDate,
+    String? todayColumn,
+  }) async {
+    var filtered = query.eq('center_id', centerId);
+    if (role != null) filtered = filtered.eq('role', role);
+    if (reportDate != null) filtered = filtered.eq('report_date', reportDate);
+    if (todayColumn != null) {
+      final tomorrow = DateTime.now().add(const Duration(days: 1));
+      final start = DateTime.now().toIso8601String().substring(0, 10);
+      final end = tomorrow.toIso8601String().substring(0, 10);
+      filtered = filtered.gte(todayColumn, start).lt(todayColumn, end);
+    }
+    final rows = await filtered;
+    return rows.length;
+  }
 }
